@@ -526,7 +526,7 @@ async function testKey(k) {
     const r = await fetch(WORKER_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: k, prompt: 'ok' })
+      body: JSON.stringify({ key: k, prompt: 'Respondé solo con la palabra: ok' })
     });
     const d = await r.json();
     return !d.error;
@@ -568,7 +568,7 @@ function updateDate() {
 
 // ── GEMINI ─────────────────────────────────────────────
 // URL del proxy en Cloudflare Workers — reemplazá con tu URL
-const WORKER_URL = 'https://gemini-proxy.juncalcf.workers.dev/';
+const WORKER_URL = 'https://gemini-proxy.juncalcf.workers.dev';
 
 async function callGemini(prompt) {
   const r = await fetch(WORKER_URL, {
