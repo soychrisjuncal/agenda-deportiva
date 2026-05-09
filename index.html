@@ -498,39 +498,13 @@ window.addEventListener('DOMContentLoaded', () => {
 async function tryStart() {
   const k = document.getElementById('keyInput').value.trim();
   const errEl = document.getElementById('setupErr');
-  const btn = document.getElementById('btnGo');
   errEl.style.display = 'none';
 
   if (!k) { showErr('Pegá tu API key.'); return; }
-  if (!k.startsWith('AIza')) { showErr('La key debe empezar con "AIza…". Copiala de nuevo desde Google AI Studio.'); return; }
-
-  btn.disabled = true;
-  btn.textContent = 'Verificando…';
-
-  const ok = await testKey(k);
-  btn.disabled = false;
-  btn.textContent = 'Comenzar →';
-
-  if (!ok) {
-    showErr('Key inválida. Asegurate de copiarla completa desde aistudio.google.com');
-    return;
-  }
 
   geminiKey = k;
   localStorage.setItem(KEY_STORE, k);
   launch();
-}
-
-async function testKey(k) {
-  try {
-    const r = await fetch(WORKER_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ key: k, prompt: 'Respondé solo con la palabra: ok' })
-    });
-    const d = await r.json();
-    return !d.error;
-  } catch { return false; }
 }
 
 function showErr(msg) {
