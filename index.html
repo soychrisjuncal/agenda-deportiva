@@ -411,19 +411,19 @@ body::before {
     <div class="setup-title">Agenda Deportiva AR</div>
     <p class="setup-desc">
       Tu widget de deportes para Argentina.<br>
-      Usá tu <strong>API Key de Gemini</strong> — es gratis, sin tarjeta.
+      Usá tu <strong>API Key de OpenRouter</strong> — es gratis, sin tarjeta.
     </p>
 
-    <label class="field-label">API Key de Gemini</label>
+    <label class="field-label">API Key de OpenRouter</label>
     <input id="keyInput" class="key-input" type="password"
-      placeholder="AIzaSy…" autocomplete="off"
+      placeholder="sk-or-v1-…" autocomplete="off"
       inputmode="text"
       onkeydown="if(event.key==='Enter')tryStart()">
 
     <p class="setup-hint">
       Conseguila gratis en
-      <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>
-      → <strong>Get API Key</strong> → <strong>Create API key</strong>.<br>
+      <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>
+      → Sign up con email → <strong>Create Key</strong>.<br>
       No requiere tarjeta de crédito.
     </p>
 
@@ -468,7 +468,7 @@ body::before {
   <div class="content" id="content"></div>
 
   <div class="app-footer">
-    <span class="gemini-badge">✦ Gemini AI · gratis</span><br><br>
+    <span class="gemini-badge">✦ OpenRouter AI · gratis</span><br><br>
     Horarios en hora Argentina (GMT-3)
   </div>
 
@@ -552,7 +552,8 @@ async function callGemini(prompt) {
   });
   const d = await r.json();
   if (d.error) throw new Error(d.error.message || JSON.stringify(d.error));
-  return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  // OpenRouter response format
+  return d.choices?.[0]?.message?.content || '';
 }
 
 // ── LOAD ───────────────────────────────────────────────
