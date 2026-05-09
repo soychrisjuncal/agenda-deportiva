@@ -3,37 +3,36 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#070b12">
+<meta name="theme-color" content="#000000">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Agenda AR">
 <title>Agenda Deportiva AR</title>
-
-<!-- PWA Manifest inline -->
-<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Agenda%20Deportiva%20AR%22%2C%22short_name%22%3A%22Agenda%20AR%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23070b12%22%2C%22theme_color%22%3A%22%23070b12%22%7D">
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #070b12;
-  --surface: #0d1524;
-  --card: #111d2e;
-  --card2: #0f1a29;
-  --border: rgba(255,255,255,.07);
-  --text: #eef2fb;
-  --muted: #4a607a;
-  --muted2: #2d4057;
+  --black: #000;
+  --bg: #0a0a0a;
+  --card: #111;
+  --card2: #161616;
+  --border: #222;
+  --border2: #2a2a2a;
+  --text: #fff;
+  --muted: #555;
+  --muted2: #333;
+  --lime: #c8f000;
+  --lime-dark: #a0c200;
+  --orange: #ff4d00;
+  --red: #e02020;
   --safe-top: env(safe-area-inset-top, 0px);
-  --safe-bot: env(safe-area-inset-bottom, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 16px);
 }
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html { font-size: 16px; }
+html { font-size:16px; }
 body {
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Barlow', sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -42,444 +41,572 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Fondo atmosférico */
-body::before {
-  content:'';
-  position:fixed; inset:0; pointer-events:none; z-index:0;
-  background:
-    radial-gradient(ellipse 100% 40% at 50% 0%, rgba(59,130,246,.09) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 90% 90%, rgba(139,92,246,.06) 0%, transparent 60%);
-}
-
-/* ── SETUP ─────────────────────────────────────── */
-#setupScreen {
-  position: fixed; inset: 0; z-index: 200;
-  background: var(--bg);
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px;
-  padding-top: calc(24px + var(--safe-top));
-}
-
-.setup-inner {
-  width: 100%; max-width: 420px;
-}
-
-.setup-emoji { font-size: 48px; margin-bottom: 16px; display: block; }
-
-.setup-title {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 2.4rem; letter-spacing: 2px; line-height: 1;
-  background: linear-gradient(135deg, #60a5fa, #a78bfa);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  margin-bottom: 8px;
-}
-
-.setup-desc {
-  font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 32px;
-}
-
-.setup-desc strong { color: #60a5fa; font-weight: 600; }
-
-.field-label {
-  font-size: 11px; font-weight: 700; letter-spacing: 1px;
-  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
-  display: block;
-}
-
-.key-input {
-  width: 100%;
-  background: var(--surface);
-  border: 1.5px solid var(--border);
-  border-radius: 14px;
-  padding: 16px 18px;
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  outline: none;
-  transition: border-color .2s;
-  margin-bottom: 10px;
-  -webkit-appearance: none;
-}
-.key-input:focus { border-color: rgba(96,165,250,.5); }
-
-.setup-hint {
-  font-size: 12px; color: var(--muted); line-height: 1.6;
-  margin-bottom: 24px;
-}
-.setup-hint a { color: #60a5fa; text-decoration: none; }
-
-.setup-err {
-  font-size: 13px; color: #fca5a5;
-  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2);
-  border-radius: 10px; padding: 10px 14px;
-  margin-bottom: 16px; display: none;
-}
-
-.btn-main {
-  width: 100%; padding: 16px;
-  background: linear-gradient(135deg, #3b82f6, #6366f1);
-  border: none; border-radius: 14px;
-  color: white; font-family: 'DM Sans', sans-serif;
-  font-size: 16px; font-weight: 700;
-  cursor: pointer; letter-spacing: .3px;
-  transition: opacity .2s, transform .1s;
-  -webkit-appearance: none;
-}
-.btn-main:active { opacity: .85; transform: scale(.98); }
-.btn-main:disabled { opacity: .4; }
-
-/* ── APP ──────────────────────────────────────── */
-#appScreen {
-  display: none;
-  position: relative; z-index: 1;
-  padding-bottom: calc(20px + var(--safe-bot));
-}
-
-/* HEADER */
+/* ── HEADER ─────────────────────────────────────── */
 .app-header {
   position: sticky; top: 0; z-index: 50;
-  background: rgba(7,11,18,.92);
-  backdrop-filter: blur(20px) saturate(1.8);
-  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  background: rgba(0,0,0,.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
-  padding: calc(var(--safe-top) + 14px) 18px 14px;
+  padding: calc(var(--safe-top) + 12px) 16px 0;
 }
 
-.hdr-row1 {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 4px;
+.hdr-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
 }
 
-.hdr-brand {
-  display: flex; align-items: center; gap: 10px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.hdr-icon {
-  width: 36px; height: 36px; border-radius: 10px;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+.brand-icon {
+  width: 32px; height: 32px;
+  background: var(--lime);
+  border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 18px; flex-shrink: 0;
+  font-size: 17px;
+  flex-shrink: 0;
 }
 
-.hdr-name {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 1.5rem; letter-spacing: 1.5px;
-  background: linear-gradient(90deg, #eef2fb, #7c93b8);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+.brand-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 1.5rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text);
+  line-height: 1;
 }
 
-.hdr-actions { display: flex; align-items: center; gap: 8px; }
+.brand-name span { color: var(--lime); }
 
-.btn-icon {
-  width: 36px; height: 36px;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; display: flex; align-items: center;
-  justify-content: center; font-size: 16px;
-  cursor: pointer; transition: background .15s;
-  -webkit-appearance: none; color: var(--text);
-}
-.btn-icon:active { background: var(--card); }
-
-.hdr-row2 {
-  display: flex; align-items: center; justify-content: space-between;
+.hdr-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.hdr-date {
-  font-size: 12px; color: var(--muted);
+.date-pill {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
 }
 
-.hdr-upd {
-  font-size: 11px; color: var(--muted2);
-  display: flex; align-items: center; gap: 5px;
+.btn-refresh {
+  width: 32px; height: 32px;
+  background: var(--lime);
+  border: none; border-radius: 4px;
+  color: #000;
+  font-size: 16px; font-weight: 900;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity .15s;
+  flex-shrink: 0;
 }
+.btn-refresh:active { opacity: .8; }
+.btn-refresh:disabled { opacity: .4; }
 
-.upd-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: #10b981;
-}
-
-/* SPORT TABS */
+/* ── SPORT TABS ──────────────────────────────────── */
 .sport-tabs {
-  display: flex; gap: 0;
-  padding: 0 18px;
+  display: flex;
+  gap: 0;
   overflow-x: auto;
-  border-bottom: 1px solid var(--border);
-  background: rgba(7,11,18,.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   scrollbar-width: none;
+  margin: 0 -16px;
+  padding: 0 16px;
 }
 .sport-tabs::-webkit-scrollbar { display: none; }
 
 .tab {
-  display: flex; align-items: center; gap: 6px;
-  padding: 12px 16px;
-  font-size: 13px; font-weight: 600;
-  color: var(--muted); cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 14px 8px;
+  cursor: pointer;
   border-bottom: 2px solid transparent;
   white-space: nowrap;
-  transition: color .2s, border-color .2s;
+  flex-shrink: 0;
+  transition: color .15s, border-color .15s;
+}
+.tab:hover { color: #888; }
+.tab.active {
+  color: var(--lime);
+  border-bottom-color: var(--lime);
+}
+
+/* ── CONTENT ─────────────────────────────────────── */
+.content {
+  padding: 16px 16px calc(var(--safe-bot) + 16px);
+}
+
+/* ── LIVE SECTION ───────────────────────────────── */
+.live-section {
+  border: 1px solid rgba(224,32,32,.3);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.live-header {
+  background: var(--red);
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.live-dot-anim {
+  width: 7px; height: 7px;
+  background: #fff;
+  border-radius: 50%;
+  animation: blink 1s infinite;
   flex-shrink: 0;
 }
-.tab.active { color: var(--text); }
-.tab[data-s="todos"].active  { border-color: #3b82f6; color: #60a5fa; }
-.tab[data-s="futbol"].active { border-color: #10b981; color: #34d399; }
-.tab[data-s="basket"].active { border-color: #f59e0b; color: #fbbf24; }
-.tab[data-s="f1"].active     { border-color: #ef4444; color: #f87171; }
-.tab[data-s="tennis"].active { border-color: #8b5cf6; color: #a78bfa; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
 
-/* CONTENT */
-.content {
-  padding: 16px 16px;
+.live-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #fff;
+  flex: 1;
 }
 
-/* CARDS */
+.live-count {
+  background: rgba(0,0,0,.3);
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.live-section .event-card {
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--border);
+}
+.live-section .event-card:last-child { border-bottom: none; }
+.live-section .event-card::before { display: none; }
+
+/* ── UPCOMING HEADER ─────────────────────────────── */
+.upcoming-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  margin-top: 4px;
+}
+
+.upcoming-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.upcoming-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ── EVENT CARD ──────────────────────────────────── */
 .event-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 12px;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
   position: relative;
   overflow: hidden;
-  animation: slideUp .35s ease both;
-  transition: transform .15s;
+  animation: slideUp .3s ease both;
+  transition: border-color .15s;
 }
-.event-card:active { transform: scale(.98); }
 .event-card:last-child { margin-bottom: 0; }
+.event-card:active { border-color: var(--border2); }
 
-/* accent left border */
+/* left accent */
 .event-card::before {
   content: '';
-  position: absolute; left: 0; top: 0; bottom: 0;
-  width: 3px; border-radius: 16px 0 0 16px;
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
 }
-.event-card[data-s="futbol"]::before { background: linear-gradient(180deg,#10b981,#059669); }
-.event-card[data-s="basket"]::before { background: linear-gradient(180deg,#f59e0b,#d97706); }
-.event-card[data-s="f1"]::before     { background: linear-gradient(180deg,#ef4444,#dc2626); }
-.event-card[data-s="tennis"]::before { background: linear-gradient(180deg,#8b5cf6,#7c3aed); }
+.event-card[data-s="futbol"]::before { background: var(--lime); }
+.event-card[data-s="basket"]::before { background: var(--orange); }
+.event-card[data-s="f1"]::before     { background: var(--red); }
+.event-card[data-s="tennis"]::before { background: #a259ff; }
 
-.card-header {
-  display: flex; align-items: center; justify-content: space-between;
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 10px;
 }
 
-.sport-chip {
-  font-size: 10px; font-weight: 700; letter-spacing: .8px;
-  text-transform: uppercase; padding: 3px 8px; border-radius: 6px;
-}
-.event-card[data-s="futbol"] .sport-chip { background:rgba(16,185,129,.15); color:#10b981; }
-.event-card[data-s="basket"] .sport-chip { background:rgba(245,158,11,.15); color:#f59e0b; }
-.event-card[data-s="f1"]     .sport-chip { background:rgba(239,68,68,.15);  color:#ef4444; }
-.event-card[data-s="tennis"] .sport-chip { background:rgba(139,92,246,.15); color:#8b5cf6; }
-
-.time-chip {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; color: var(--muted);
-  background: rgba(255,255,255,.04);
-  border: 1px solid var(--border);
-  padding: 3px 9px; border-radius: 6px;
-}
-
-.live-chip {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+.sport-badge {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  padding: 3px 9px; border-radius: 6px;
-  background: rgba(239,68,68,.12); color: #ef4444;
-  border: 1px solid rgba(239,68,68,.25);
+  padding: 3px 8px;
+  border-radius: 3px;
 }
-.live-pulse {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: #ef4444; animation: pulse 1.2s infinite;
+.event-card[data-s="futbol"] .sport-badge { background: rgba(200,240,0,.12); color: var(--lime); }
+.event-card[data-s="basket"] .sport-badge { background: rgba(255,77,0,.12);   color: var(--orange); }
+.event-card[data-s="f1"]     .sport-badge { background: rgba(224,32,32,.12);  color: #ff6b6b; }
+.event-card[data-s="tennis"] .sport-badge { background: rgba(162,89,255,.12); color: #bf8bff; }
+
+.time-tag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.live-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--red);
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #fff;
+}
+.live-badge-dot {
+  width: 5px; height: 5px;
+  background: #fff;
+  border-radius: 50%;
+  animation: blink 1s infinite;
 }
 
 .ev-title {
-  font-size: 15px; font-weight: 700; line-height: 1.3;
-  margin-bottom: 3px; padding-left: 6px;
-}
-.ev-sub {
-  font-size: 12px; color: var(--muted);
-  margin-bottom: 12px; padding-left: 6px; line-height: 1.4;
-}
-
-.card-footer {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 8px; flex-wrap: wrap;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-}
-
-.channels {
-  display: flex; gap: 5px; flex-wrap: wrap; flex: 1;
-}
-.ch {
-  font-size: 11px; font-weight: 600;
-  padding: 4px 9px; border-radius: 7px;
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.09);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  line-height: 1.15;
+  margin-bottom: 3px;
+  padding-left: 6px;
   color: var(--text);
 }
 
+.ev-sub {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 12px;
+  padding-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.channels { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; }
+
+.ch {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 3px;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  color: #aaa;
+}
+
 .venue {
-  font-size: 11px; color: var(--muted2);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: var(--muted);
   flex-shrink: 0;
 }
 
-/* STATUS SCREENS */
+/* ── STATS BAR ───────────────────────────────────── */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--black);
+}
+
+.stat {
+  text-align: center;
+}
+
+.stat-num {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: 1px;
+  color: var(--text);
+  line-height: 1;
+}
+
+.stat-num.lime { color: var(--lime); }
+.stat-num.orange { color: var(--orange); }
+.stat-num.red { color: var(--red); }
+
+.stat-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ── STATUS SCREENS ──────────────────────────────── */
 .loading-screen {
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 80px 24px; text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  text-align: center;
 }
-.load-orb {
-  width: 60px; height: 60px; border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-  margin-bottom: 24px;
-  animation: breathe 1.5s ease-in-out infinite;
+
+.load-bar-wrap {
+  width: 120px;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 20px;
 }
-.load-txt { font-size: 15px; color: var(--muted); line-height: 1.6; }
-.load-txt b { color: #60a5fa; }
+.load-bar {
+  height: 100%;
+  background: var(--lime);
+  border-radius: 2px;
+  animation: loadbar 1.5s ease-in-out infinite;
+}
+@keyframes loadbar {
+  0%   { width: 0%;   margin-left: 0; }
+  50%  { width: 70%;  margin-left: 0; }
+  100% { width: 0%;   margin-left: 100%; }
+}
+
+.load-txt {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.load-txt b { color: var(--lime); }
 
 .error-screen {
-  margin: 16px; padding: 28px 20px;
-  background: rgba(239,68,68,.06);
-  border: 1px solid rgba(239,68,68,.18);
-  border-radius: 16px; text-align: center;
+  margin: 0;
+  padding: 32px 20px;
+  border: 1px solid rgba(224,32,32,.25);
+  border-radius: 8px;
+  text-align: center;
 }
-.err-icon { font-size: 32px; margin-bottom: 10px; }
-.err-title { font-size: 15px; font-weight: 700; color: #fca5a5; margin-bottom: 6px; }
-.err-msg { font-size: 13px; color: #f87171; opacity: .8; margin-bottom: 16px; line-height: 1.5; }
+
+.err-icon {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+.err-title {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ff6b6b;
+  margin-bottom: 8px;
+}
+
+.err-msg {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+
 .btn-retry {
-  padding: 10px 24px;
-  background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.3);
-  border-radius: 10px; color: #fca5a5;
-  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
-  cursor: pointer; -webkit-appearance: none;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  background: var(--red);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
 }
 
 .empty-screen {
-  padding: 60px 24px; text-align: center;
-  font-size: 14px; color: var(--muted);
+  padding: 60px 24px;
+  text-align: center;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-/* SECTION HEADER (by sport when showing all) */
-.section-label {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 11px; font-weight: 700; letter-spacing: 1px;
-  text-transform: uppercase; color: var(--muted);
-  margin-bottom: 10px; margin-top: 20px;
-  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+/* ── UPD indicator ───────────────────────────────── */
+.upd-row {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 16px;
+  background: rgba(200,240,0,.04);
+  border-bottom: 1px solid rgba(200,240,0,.1);
 }
-.section-label:first-child { margin-top: 0; }
+.upd-dot { width:5px;height:5px;background:var(--lime);border-radius:50%; }
+.upd-txt {
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:600;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--lime);
+}
 
-/* FOOTER */
+/* ── FOOTER ──────────────────────────────────────── */
 .app-footer {
-  text-align: center; padding: 20px 16px 8px;
-  font-size: 11px; color: var(--muted2);
-}
-.gemini-badge {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: linear-gradient(135deg,rgba(59,130,246,.1),rgba(139,92,246,.1));
-  border: 1px solid rgba(99,102,241,.2);
-  border-radius: 8px; padding: 4px 12px;
-  color: #818cf8; font-weight: 500; font-size: 11px;
+  text-align: center;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
 }
 
-@keyframes slideUp  { from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)} }
-@keyframes pulse    { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)} }
-@keyframes spin     { to{transform:rotate(360deg)} }
-@keyframes breathe  { 0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.1);opacity:1} }
+.footer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
 
-/* Stagger */
-.event-card:nth-child(1){animation-delay:.04s}
-.event-card:nth-child(2){animation-delay:.08s}
-.event-card:nth-child(3){animation-delay:.12s}
-.event-card:nth-child(4){animation-delay:.16s}
-.event-card:nth-child(5){animation-delay:.20s}
-.event-card:nth-child(6){animation-delay:.24s}
-.event-card:nth-child(7){animation-delay:.28s}
-.event-card:nth-child(8){animation-delay:.32s}
+.footer-badge span {
+  color: var(--lime);
+}
+
+@keyframes slideUp { from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)} }
+@keyframes spin    { to{transform:rotate(360deg)} }
+
+.event-card:nth-child(1){animation-delay:.03s}
+.event-card:nth-child(2){animation-delay:.06s}
+.event-card:nth-child(3){animation-delay:.09s}
+.event-card:nth-child(4){animation-delay:.12s}
+.event-card:nth-child(5){animation-delay:.15s}
+.event-card:nth-child(6){animation-delay:.18s}
+.event-card:nth-child(7){animation-delay:.21s}
+.event-card:nth-child(8){animation-delay:.24s}
 </style>
 </head>
 <body>
 
-<!-- ═══ SETUP ═══ -->
-<div id="setupScreen">
-  <div class="setup-inner">
-    <span class="setup-emoji">🏟️</span>
-    <div class="setup-title">Agenda Deportiva AR</div>
-    <p class="setup-desc">
-      Tu widget de deportes para Argentina.<br>
-      Usá tu <strong>API Key de OpenRouter</strong> — es gratis, sin tarjeta.
-    </p>
+<div class="app-header">
+  <div class="hdr-top">
+    <div class="brand">
+      <div class="brand-icon">🏟️</div>
+      <div class="brand-name">AGENDA <span>AR</span></div>
+    </div>
+    <div class="hdr-right">
+      <div class="date-pill" id="dateLabel">—</div>
+      <button class="btn-refresh" id="btnRefresh" onclick="loadAgenda()" title="Actualizar">↻</button>
+    </div>
+  </div>
 
-    <label class="field-label">API Key de OpenRouter</label>
-    <input id="keyInput" class="key-input" type="password"
-      placeholder="sk-or-v1-…" autocomplete="off"
-      inputmode="text"
-      onkeydown="if(event.key==='Enter')tryStart()">
-
-    <p class="setup-hint">
-      Conseguila gratis en
-      <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a>
-      → Sign up con email → <strong>Create Key</strong>.<br>
-      No requiere tarjeta de crédito.
-    </p>
-
-    <div class="setup-err" id="setupErr"></div>
-
-    <button class="btn-main" id="btnGo" onclick="tryStart()">
-      Comenzar →
-    </button>
+  <div class="sport-tabs">
+    <div class="tab active" data-s="todos"  onclick="setFilter('todos')">TODOS</div>
+    <div class="tab"        data-s="futbol" onclick="setFilter('futbol')">⚽ FÚTBOL</div>
+    <div class="tab"        data-s="basket" onclick="setFilter('basket')">🏀 BÁSQUET</div>
+    <div class="tab"        data-s="f1"     onclick="setFilter('f1')">🏎️ F1</div>
+    <div class="tab"        data-s="tennis" onclick="setFilter('tennis')">🎾 TENIS</div>
   </div>
 </div>
 
-<!-- ═══ APP ═══ -->
-<div id="appScreen">
+<div class="upd-row" id="updRow">
+  <span class="upd-dot"></span>
+  <span class="upd-txt">Actualizado <span id="updTime"></span></span>
+</div>
 
-  <div class="app-header">
-    <div class="hdr-row1">
-      <div class="hdr-brand">
-        <div class="hdr-icon">🏟️</div>
-        <div class="hdr-name">AGENDA AR</div>
-      </div>
-      <div class="hdr-actions">
-        <button class="btn-icon" id="btnRefresh" onclick="loadAgenda()" title="Actualizar">↻</button>
-        <button class="btn-icon" onclick="resetKey()" title="Configuración">⚙️</button>
-      </div>
-    </div>
-    <div class="hdr-row2">
-      <span class="hdr-date" id="dateLabel">—</span>
-      <span class="hdr-upd" id="updLabel" style="display:none">
-        <span class="upd-dot"></span> <span id="updTime"></span>
-      </span>
-    </div>
+<div id="statsBar" class="stats-bar" style="display:none">
+  <div class="stat">
+    <div class="stat-num lime" id="statTotal">0</div>
+    <div class="stat-label">Eventos</div>
   </div>
-
-  <div class="sport-tabs" id="sportTabs">
-    <div class="tab active" data-s="todos"  onclick="setFilter('todos')">⚡ Todos</div>
-    <div class="tab"        data-s="futbol" onclick="setFilter('futbol')">⚽ Fútbol</div>
-    <div class="tab"        data-s="basket" onclick="setFilter('basket')">🏀 Básquet</div>
-    <div class="tab"        data-s="f1"     onclick="setFilter('f1')">🏎️ F1</div>
-    <div class="tab"        data-s="tennis" onclick="setFilter('tennis')">🎾 Tenis</div>
+  <div class="stat">
+    <div class="stat-num red" id="statLive">0</div>
+    <div class="stat-label">En vivo</div>
   </div>
-
-  <div class="content" id="content"></div>
-
-  <div class="app-footer">
-    <span class="gemini-badge">✦ OpenRouter AI · gratis</span><br><br>
-    Horarios en hora Argentina (GMT-3)
+  <div class="stat">
+    <div class="stat-num" id="statFut">0</div>
+    <div class="stat-label">Fútbol</div>
   </div>
+  <div class="stat">
+    <div class="stat-num orange" id="statOther">0</div>
+    <div class="stat-label">Otros</div>
+  </div>
+</div>
 
+<div class="content" id="content">
+</div>
+
+<div class="app-footer">
+  <div class="footer-badge">POWERED BY <span>AI</span> · GMT-3 · AUTO 30MIN</div>
 </div>
 
 <script>
-// ── CONFIG ─────────────────────────────────────────────
-const KEY_STORE = 'geminiKey_agendaAR_v3';
-let geminiKey = '';
-let allEvents = [];
-let currentFilter = 'todos';
+const WORKER_URL = 'https://gemini-proxy.juncalcf.workers.dev';
 
 const SPORT_META = {
   futbol: { icon:'⚽', label:'Fútbol'    },
@@ -488,84 +615,44 @@ const SPORT_META = {
   tennis: { icon:'🎾', label:'Tenis'     },
 };
 
-// ── INIT ───────────────────────────────────────────────
+let allEvents = [];
+let currentFilter = 'todos';
+
 window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem(KEY_STORE);
-  if (saved) { geminiKey = saved; launch(); }
-});
-
-// ── SETUP ──────────────────────────────────────────────
-async function tryStart() {
-  const k = document.getElementById('keyInput').value.trim();
-  const errEl = document.getElementById('setupErr');
-  errEl.style.display = 'none';
-
-  if (!k) { showErr('Pegá tu API key.'); return; }
-
-  geminiKey = k;
-  localStorage.setItem(KEY_STORE, k);
-  launch();
-}
-
-function showErr(msg) {
-  const el = document.getElementById('setupErr');
-  el.textContent = '⚠️ ' + msg;
-  el.style.display = 'block';
-}
-
-function resetKey() {
-  if (!confirm('¿Cambiar la API Key?')) return;
-  localStorage.removeItem(KEY_STORE);
-  geminiKey = '';
-  document.getElementById('keyInput').value = '';
-  document.getElementById('setupErr').style.display = 'none';
-  document.getElementById('appScreen').style.display = 'none';
-  document.getElementById('setupScreen').style.display = 'flex';
-}
-
-function launch() {
-  document.getElementById('setupScreen').style.display = 'none';
-  document.getElementById('appScreen').style.display = 'block';
   updateDate();
   loadAgenda();
   setInterval(loadAgenda, 30 * 60 * 1000);
-}
+});
 
-// ── DATE ───────────────────────────────────────────────
 function updateDate() {
   const s = new Date().toLocaleDateString('es-AR', {
-    weekday:'long', day:'numeric', month:'long',
+    weekday:'short', day:'numeric', month:'short',
     timeZone:'America/Argentina/Buenos_Aires'
   });
-  document.getElementById('dateLabel').textContent = s.replace(/^\w/,c=>c.toUpperCase());
+  document.getElementById('dateLabel').textContent = s.toUpperCase();
 }
 
-// ── GEMINI ─────────────────────────────────────────────
-// URL del proxy en Cloudflare Workers — reemplazá con tu URL
-const WORKER_URL = 'https://gemini-proxy.juncalcf.workers.dev';
-
-async function callGemini(prompt) {
+async function callAI(prompt) {
   const r = await fetch(WORKER_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key: geminiKey, prompt })
+    body: JSON.stringify({ prompt })
   });
   const d = await r.json();
   if (d.error) throw new Error(d.error.message || JSON.stringify(d.error));
-  // OpenRouter response format
   return d.choices?.[0]?.message?.content || '';
 }
 
-// ── LOAD ───────────────────────────────────────────────
 async function loadAgenda() {
   const btn = document.getElementById('btnRefresh');
   btn.style.animation = 'spin 1s linear infinite';
   btn.disabled = true;
+  document.getElementById('statsBar').style.display = 'none';
 
   document.getElementById('content').innerHTML = `
     <div class="loading-screen">
-      <div class="load-orb"></div>
-      <div class="load-txt">Consultando agenda con<br><b>Gemini AI</b>…</div>
+      <div class="load-bar-wrap"><div class="load-bar"></div></div>
+      <div class="load-txt">CARGANDO CON <b>IA</b>…</div>
     </div>`;
 
   const today = new Date().toLocaleDateString('es-AR', {
@@ -585,46 +672,43 @@ Generá la agenda deportiva completa de hoy para Argentina. Incluí:
 - Fórmula 1: si hoy hay Carrera, Clasificación, Sprint o Práctica Libre.
 - Tenis: torneos ATP o WTA con partidos destacados hoy.
 
-Para cada evento indicá el canal de TV argentina donde se transmite: ESPN, ESPN Premium, Star+, DSports, DSports+, TyC Sports, DIRECTV Sports, Canal 7, Telefe, América TV, Flow Sport, TNT Sports.
+Para cada evento indicá el canal de TV argentina: ESPN, ESPN Premium, Star+, DSports, DSports+, TyC Sports, DIRECTV Sports, Canal 7, Telefe, América TV, Flow Sport, TNT Sports.
 
-Respondé ÚNICAMENTE con JSON puro. Sin texto antes ni después. Sin backticks. Sin markdown. Solo el array JSON.
+Respondé ÚNICAMENTE con JSON puro. Sin texto antes ni después. Sin backticks. Solo el array JSON.
 
-Formato de cada objeto:
+Formato:
 {"sport":"futbol","title":"River vs Boca","subtitle":"Liga Profesional · Fecha 15","time":"21:00","isLive":false,"channels":["ESPN Premium","Star+"],"venue":"Monumental"}
 
-Valores válidos de sport: futbol, basket, f1, tennis
-time: formato HH:MM hora argentina
-isLive: true si está jugándose ahora (son las ${nowArg})
-channels: array de strings con canales argentinos
-venue: string o vacío
+sport: futbol|basket|f1|tennis · time: HH:MM argentina · isLive: true si está en curso ahora (son las ${nowArg}) · channels: array · venue: string o vacío
 
 Incluí entre 10 y 16 eventos reales de hoy.`;
 
   try {
-    const raw = await callGemini(prompt);
+    const raw = await callAI(prompt);
     const clean = raw.replace(/```json|```/g,'').trim();
     const m = clean.match(/\[[\s\S]*\]/);
-    if (!m) throw new Error('No se recibieron eventos. Intentá de nuevo.');
+    if (!m) throw new Error('No se recibieron eventos.');
 
     allEvents = JSON.parse(m[0]);
     if (!Array.isArray(allEvents) || !allEvents.length)
       throw new Error('No hay eventos para hoy.');
 
     const t = new Date().toLocaleTimeString('es-AR',{
-      hour:'2-digit',minute:'2-digit',
+      hour:'2-digit', minute:'2-digit',
       timeZone:'America/Argentina/Buenos_Aires'
     });
     document.getElementById('updTime').textContent = t;
-    document.getElementById('updLabel').style.display = 'flex';
+    document.getElementById('updRow').style.display = 'flex';
 
+    updateStats();
     setFilter(currentFilter);
   } catch(err) {
     document.getElementById('content').innerHTML = `
       <div class="error-screen">
-        <div class="err-icon">⚠️</div>
-        <div class="err-title">No se pudo cargar</div>
+        <div class="err-icon">⚡</div>
+        <div class="err-title">Error al cargar</div>
         <div class="err-msg">${err.message}</div>
-        <button class="btn-retry" onclick="loadAgenda()">↻ Reintentar</button>
+        <button class="btn-retry" onclick="loadAgenda()">REINTENTAR</button>
       </div>`;
   } finally {
     btn.style.animation = '';
@@ -633,61 +717,95 @@ Incluí entre 10 y 16 eventos reales de hoy.`;
   }
 }
 
-// ── FILTER ─────────────────────────────────────────────
+function updateStats() {
+  const live = allEvents.filter(e => e.isLive).length;
+  const fut = allEvents.filter(e => e.sport === 'futbol').length;
+  const other = allEvents.filter(e => e.sport !== 'futbol').length;
+  document.getElementById('statTotal').textContent = allEvents.length;
+  document.getElementById('statLive').textContent = live;
+  document.getElementById('statFut').textContent = fut;
+  document.getElementById('statOther').textContent = other;
+  document.getElementById('statsBar').style.display = 'grid';
+}
+
+function sortByTime(evs) {
+  return [...evs].sort((a, b) => {
+    const toMin = t => {
+      if (!t || t === '—') return 9999;
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    return toMin(a.time) - toMin(b.time);
+  });
+}
+
 function setFilter(sport) {
   currentFilter = sport;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelector(`.tab[data-s="${sport}"]`).classList.add('active');
-
   const list = sport === 'todos' ? allEvents : allEvents.filter(e => e.sport === sport);
-  renderEvents(list, sport);
+  renderEvents(list);
 }
 
-// ── RENDER ─────────────────────────────────────────────
-function renderEvents(evs, filter) {
-  const content = document.getElementById('content');
+function renderEvents(evs) {
+  const el = document.getElementById('content');
 
   if (!evs.length) {
-    content.innerHTML = `<div class="empty-screen">😴 No hay eventos para este deporte hoy.</div>`;
+    el.innerHTML = `<div class="empty-screen">SIN EVENTOS HOY</div>`;
     return;
   }
 
-  // Si es "todos", agrupar por deporte
-  if (filter === 'todos') {
-    const order = ['futbol','basket','f1','tennis'];
-    let html = '';
-    for (const sport of order) {
-      const group = evs.filter(e => e.sport === sport);
-      if (!group.length) continue;
-      const m = SPORT_META[sport];
-      html += `<div class="section-label">${m.icon} ${m.label}</div>`;
-      html += group.map(ev => cardHTML(ev)).join('');
-    }
-    content.innerHTML = html;
-  } else {
-    content.innerHTML = evs.map(ev => cardHTML(ev)).join('');
+  const liveEvs = evs.filter(e => e.isLive);
+  const upcoming = sortByTime(evs.filter(e => !e.isLive));
+
+  let html = '';
+
+  if (liveEvs.length) {
+    html += `
+      <div class="live-section">
+        <div class="live-header">
+          <span class="live-dot-anim"></span>
+          <span class="live-label">EN VIVO AHORA</span>
+          <span class="live-count">${liveEvs.length} EVENTOS</span>
+        </div>
+        ${liveEvs.map(ev => cardHTML(ev)).join('')}
+      </div>`;
   }
+
+  if (upcoming.length) {
+    if (liveEvs.length) {
+      html += `
+        <div class="upcoming-header">
+          <span class="upcoming-label">PRÓXIMOS</span>
+          <span class="upcoming-line"></span>
+        </div>`;
+    }
+    html += upcoming.map(ev => cardHTML(ev)).join('');
+  }
+
+  el.innerHTML = html;
 }
 
 function cardHTML(ev) {
   const chs = Array.isArray(ev.channels) ? ev.channels : [];
+  const meta = SPORT_META[ev.sport] || { icon:'🏅', label: ev.sport };
   return `
   <div class="event-card" data-s="${ev.sport}">
-    <div class="card-header">
-      <span class="sport-chip">${SPORT_META[ev.sport]?.icon || '🏅'} ${SPORT_META[ev.sport]?.label || ev.sport}</span>
+    <div class="card-top">
+      <span class="sport-badge">${meta.icon} ${meta.label.toUpperCase()}</span>
       ${ev.isLive
-        ? `<span class="live-chip"><span class="live-pulse"></span>EN VIVO</span>`
-        : `<span class="time-chip">🕐 ${ev.time}</span>`}
+        ? `<span class="live-badge"><span class="live-badge-dot"></span>LIVE</span>`
+        : `<span class="time-tag">${ev.time} HS</span>`}
     </div>
     <div class="ev-title">${ev.title}</div>
     <div class="ev-sub">${ev.subtitle || ''}</div>
     <div class="card-footer">
       <div class="channels">
         ${chs.length
-          ? chs.map(c=>`<span class="ch">📺 ${c}</span>`).join('')
-          : `<span style="font-size:11px;color:var(--muted)">Sin transmisión confirmada</span>`}
+          ? chs.map(c=>`<span class="ch">${c}</span>`).join('')
+          : `<span class="ch" style="color:var(--muted2)">SIN TV CONFIRMADA</span>`}
       </div>
-      ${ev.venue ? `<span class="venue">📍 ${ev.venue}</span>` : ''}
+      ${ev.venue ? `<span class="venue">${ev.venue}</span>` : ''}
     </div>
   </div>`;
 }
