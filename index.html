@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#070b12">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Agenda AR">
+<title>Agenda Deportiva AR</title>
+
+<!-- PWA Manifest inline -->
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22Agenda%20Deportiva%20AR%22%2C%22short_name%22%3A%22Agenda%20AR%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23070b12%22%2C%22theme_color%22%3A%22%23070b12%22%7D">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #070b12;
+  --surface: #0d1524;
+  --card: #111d2e;
+  --card2: #0f1a29;
+  --border: rgba(255,255,255,.07);
+  --text: #eef2fb;
+  --muted: #4a607a;
+  --muted2: #2d4057;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { font-size: 16px; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Fondo atmosférico */
+body::before {
+  content:'';
+  position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 100% 40% at 50% 0%, rgba(59,130,246,.09) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 90%, rgba(139,92,246,.06) 0%, transparent 60%);
+}
+
+/* ── SETUP ─────────────────────────────────────── */
+#setupScreen {
+  position: fixed; inset: 0; z-index: 200;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  padding-top: calc(24px + var(--safe-top));
+}
+
+.setup-inner {
+  width: 100%; max-width: 420px;
+}
+
+.setup-emoji { font-size: 48px; margin-bottom: 16px; display: block; }
+
+.setup-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 2.4rem; letter-spacing: 2px; line-height: 1;
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+
+.setup-desc {
+  font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 32px;
+}
+
+.setup-desc strong { color: #60a5fa; font-weight: 600; }
+
+.field-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+  display: block;
+}
+
+.key-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  outline: none;
+  transition: border-color .2s;
+  margin-bottom: 10px;
+  -webkit-appearance: none;
+}
+.key-input:focus { border-color: rgba(96,165,250,.5); }
+
+.setup-hint {
+  font-size: 12px; color: var(--muted); line-height: 1.6;
+  margin-bottom: 24px;
+}
+.setup-hint a { color: #60a5fa; text-decoration: none; }
+
+.setup-err {
+  font-size: 13px; color: #fca5a5;
+  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2);
+  border-radius: 10px; padding: 10px 14px;
+  margin-bottom: 16px; display: none;
+}
+
+.btn-main {
+  width: 100%; padding: 16px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  border: none; border-radius: 14px;
+  color: white; font-family: 'DM Sans', sans-serif;
+  font-size: 16px; font-weight: 700;
+  cursor: pointer; letter-spacing: .3px;
+  transition: opacity .2s, transform .1s;
+  -webkit-appearance: none;
+}
+.btn-main:active { opacity: .85; transform: scale(.98); }
+.btn-main:disabled { opacity: .4; }
+
+/* ── APP ──────────────────────────────────────── */
+#appScreen {
+  display: none;
+  position: relative; z-index: 1;
+  padding-bottom: calc(20px + var(--safe-bot));
+}
+
+/* HEADER */
+.app-header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(7,11,18,.92);
+  backdrop-filter: blur(20px) saturate(1.8);
+  -webkit-backdrop-filter: blur(20px) saturate(1.8);
+  border-bottom: 1px solid var(--border);
+  padding: calc(var(--safe-top) + 14px) 18px 14px;
+}
+
+.hdr-row1 {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.hdr-brand {
+  display: flex; align-items: center; gap: 10px;
+}
+
+.hdr-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+
+.hdr-name {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.5rem; letter-spacing: 1.5px;
+  background: linear-gradient(90deg, #eef2fb, #7c93b8);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+.hdr-actions { display: flex; align-items: center; gap: 8px; }
+
+.btn-icon {
+  width: 36px; height: 36px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; display: flex; align-items: center;
+  justify-content: center; font-size: 16px;
+  cursor: pointer; transition: background .15s;
+  -webkit-appearance: none; color: var(--text);
+}
+.btn-icon:active { background: var(--card); }
+
+.hdr-row2 {
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.hdr-date {
+  font-size: 12px; color: var(--muted);
+}
+
+.hdr-upd {
+  font-size: 11px; color: var(--muted2);
+  display: flex; align-items: center; gap: 5px;
+}
+
+.upd-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #10b981;
+}
+
+/* SPORT TABS */
+.sport-tabs {
+  display: flex; gap: 0;
+  padding: 0 18px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: rgba(7,11,18,.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  scrollbar-width: none;
+}
+.sport-tabs::-webkit-scrollbar { display: none; }
+
+.tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 12px 16px;
+  font-size: 13px; font-weight: 600;
+  color: var(--muted); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: color .2s, border-color .2s;
+  flex-shrink: 0;
+}
+.tab.active { color: var(--text); }
+.tab[data-s="todos"].active  { border-color: #3b82f6; color: #60a5fa; }
+.tab[data-s="futbol"].active { border-color: #10b981; color: #34d399; }
+.tab[data-s="basket"].active { border-color: #f59e0b; color: #fbbf24; }
+.tab[data-s="f1"].active     { border-color: #ef4444; color: #f87171; }
+.tab[data-s="tennis"].active { border-color: #8b5cf6; color: #a78bfa; }
+
+/* CONTENT */
+.content {
+  padding: 16px 16px;
+}
+
+/* CARDS */
+.event-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+  animation: slideUp .35s ease both;
+  transition: transform .15s;
+}
+.event-card:active { transform: scale(.98); }
+.event-card:last-child { margin-bottom: 0; }
+
+/* accent left border */
+.event-card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px; border-radius: 16px 0 0 16px;
+}
+.event-card[data-s="futbol"]::before { background: linear-gradient(180deg,#10b981,#059669); }
+.event-card[data-s="basket"]::before { background: linear-gradient(180deg,#f59e0b,#d97706); }
+.event-card[data-s="f1"]::before     { background: linear-gradient(180deg,#ef4444,#dc2626); }
+.event-card[data-s="tennis"]::before { background: linear-gradient(180deg,#8b5cf6,#7c3aed); }
+
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.sport-chip {
+  font-size: 10px; font-weight: 700; letter-spacing: .8px;
+  text-transform: uppercase; padding: 3px 8px; border-radius: 6px;
+}
+.event-card[data-s="futbol"] .sport-chip { background:rgba(16,185,129,.15); color:#10b981; }
+.event-card[data-s="basket"] .sport-chip { background:rgba(245,158,11,.15); color:#f59e0b; }
+.event-card[data-s="f1"]     .sport-chip { background:rgba(239,68,68,.15);  color:#ef4444; }
+.event-card[data-s="tennis"] .sport-chip { background:rgba(139,92,246,.15); color:#8b5cf6; }
+
+.time-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: var(--muted);
+  background: rgba(255,255,255,.04);
+  border: 1px solid var(--border);
+  padding: 3px 9px; border-radius: 6px;
+}
+
+.live-chip {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 9px; border-radius: 6px;
+  background: rgba(239,68,68,.12); color: #ef4444;
+  border: 1px solid rgba(239,68,68,.25);
+}
+.live-pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #ef4444; animation: pulse 1.2s infinite;
+}
+
+.ev-title {
+  font-size: 15px; font-weight: 700; line-height: 1.3;
+  margin-bottom: 3px; padding-left: 6px;
+}
+.ev-sub {
+  font-size: 12px; color: var(--muted);
+  margin-bottom: 12px; padding-left: 6px; line-height: 1.4;
+}
+
+.card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.channels {
+  display: flex; gap: 5px; flex-wrap: wrap; flex: 1;
+}
+.ch {
+  font-size: 11px; font-weight: 600;
+  padding: 4px 9px; border-radius: 7px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.09);
+  color: var(--text);
+}
+
+.venue {
+  font-size: 11px; color: var(--muted2);
+  flex-shrink: 0;
+}
+
+/* STATUS SCREENS */
+.loading-screen {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 80px 24px; text-align: center;
+}
+.load-orb {
+  width: 60px; height: 60px; border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  margin-bottom: 24px;
+  animation: breathe 1.5s ease-in-out infinite;
+}
+.load-txt { font-size: 15px; color: var(--muted); line-height: 1.6; }
+.load-txt b { color: #60a5fa; }
+
+.error-screen {
+  margin: 16px; padding: 28px 20px;
+  background: rgba(239,68,68,.06);
+  border: 1px solid rgba(239,68,68,.18);
+  border-radius: 16px; text-align: center;
+}
+.err-icon { font-size: 32px; margin-bottom: 10px; }
+.err-title { font-size: 15px; font-weight: 700; color: #fca5a5; margin-bottom: 6px; }
+.err-msg { font-size: 13px; color: #f87171; opacity: .8; margin-bottom: 16px; line-height: 1.5; }
+.btn-retry {
+  padding: 10px 24px;
+  background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.3);
+  border-radius: 10px; color: #fca5a5;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; -webkit-appearance: none;
+}
+
+.empty-screen {
+  padding: 60px 24px; text-align: center;
+  font-size: 14px; color: var(--muted);
+}
+
+/* SECTION HEADER (by sport when showing all) */
+.section-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 10px; margin-top: 20px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.section-label:first-child { margin-top: 0; }
+
+/* FOOTER */
+.app-footer {
+  text-align: center; padding: 20px 16px 8px;
+  font-size: 11px; color: var(--muted2);
+}
+.gemini-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: linear-gradient(135deg,rgba(59,130,246,.1),rgba(139,92,246,.1));
+  border: 1px solid rgba(99,102,241,.2);
+  border-radius: 8px; padding: 4px 12px;
+  color: #818cf8; font-weight: 500; font-size: 11px;
+}
+
+@keyframes slideUp  { from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)} }
+@keyframes pulse    { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)} }
+@keyframes spin     { to{transform:rotate(360deg)} }
+@keyframes breathe  { 0%,100%{transform:scale(1);opacity:.8}50%{transform:scale(1.1);opacity:1} }
+
+/* Stagger */
+.event-card:nth-child(1){animation-delay:.04s}
+.event-card:nth-child(2){animation-delay:.08s}
+.event-card:nth-child(3){animation-delay:.12s}
+.event-card:nth-child(4){animation-delay:.16s}
+.event-card:nth-child(5){animation-delay:.20s}
+.event-card:nth-child(6){animation-delay:.24s}
+.event-card:nth-child(7){animation-delay:.28s}
+.event-card:nth-child(8){animation-delay:.32s}
+</style>
+</head>
+<body>
+
+<!-- ═══ SETUP ═══ -->
+<div id="setupScreen">
+  <div class="setup-inner">
+    <span class="setup-emoji">🏟️</span>
+    <div class="setup-title">Agenda Deportiva AR</div>
+    <p class="setup-desc">
+      Tu widget de deportes para Argentina.<br>
+      Usá tu <strong>API Key de Gemini</strong> — es gratis, sin tarjeta.
+    </p>
+
+    <label class="field-label">API Key de Gemini</label>
+    <input id="keyInput" class="key-input" type="password"
+      placeholder="AIzaSy…" autocomplete="off"
+      inputmode="text"
+      onkeydown="if(event.key==='Enter')tryStart()">
+
+    <p class="setup-hint">
+      Conseguila gratis en
+      <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a>
+      → <strong>Get API Key</strong> → <strong>Create API key</strong>.<br>
+      No requiere tarjeta de crédito.
+    </p>
+
+    <div class="setup-err" id="setupErr"></div>
+
+    <button class="btn-main" id="btnGo" onclick="tryStart()">
+      Comenzar →
+    </button>
+  </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div id="appScreen">
+
+  <div class="app-header">
+    <div class="hdr-row1">
+      <div class="hdr-brand">
+        <div class="hdr-icon">🏟️</div>
+        <div class="hdr-name">AGENDA AR</div>
+      </div>
+      <div class="hdr-actions">
+        <button class="btn-icon" id="btnRefresh" onclick="loadAgenda()" title="Actualizar">↻</button>
+        <button class="btn-icon" onclick="resetKey()" title="Configuración">⚙️</button>
+      </div>
+    </div>
+    <div class="hdr-row2">
+      <span class="hdr-date" id="dateLabel">—</span>
+      <span class="hdr-upd" id="updLabel" style="display:none">
+        <span class="upd-dot"></span> <span id="updTime"></span>
+      </span>
+    </div>
+  </div>
+
+  <div class="sport-tabs" id="sportTabs">
+    <div class="tab active" data-s="todos"  onclick="setFilter('todos')">⚡ Todos</div>
+    <div class="tab"        data-s="futbol" onclick="setFilter('futbol')">⚽ Fútbol</div>
+    <div class="tab"        data-s="basket" onclick="setFilter('basket')">🏀 Básquet</div>
+    <div class="tab"        data-s="f1"     onclick="setFilter('f1')">🏎️ F1</div>
+    <div class="tab"        data-s="tennis" onclick="setFilter('tennis')">🎾 Tenis</div>
+  </div>
+
+  <div class="content" id="content"></div>
+
+  <div class="app-footer">
+    <span class="gemini-badge">✦ Gemini AI · gratis</span><br><br>
+    Horarios en hora Argentina (GMT-3)
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ─────────────────────────────────────────────
+const KEY_STORE = 'geminiKey_agendaAR_v3';
+let geminiKey = '';
+let allEvents = [];
+let currentFilter = 'todos';
+
+const SPORT_META = {
+  futbol: { icon:'⚽', label:'Fútbol'    },
+  basket: { icon:'🏀', label:'Básquet'   },
+  f1:     { icon:'🏎️', label:'Fórmula 1' },
+  tennis: { icon:'🎾', label:'Tenis'     },
+};
+
+// ── INIT ───────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem(KEY_STORE);
+  if (saved) { geminiKey = saved; launch(); }
+});
+
+// ── SETUP ──────────────────────────────────────────────
+async function tryStart() {
+  const k = document.getElementById('keyInput').value.trim();
+  const errEl = document.getElementById('setupErr');
+  const btn = document.getElementById('btnGo');
+  errEl.style.display = 'none';
+
+  if (!k) { showErr('Pegá tu API key.'); return; }
+  if (!k.startsWith('AIza')) { showErr('La key debe empezar con "AIza…". Copiala de nuevo desde Google AI Studio.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Verificando…';
+
+  const ok = await testKey(k);
+  btn.disabled = false;
+  btn.textContent = 'Comenzar →';
+
+  if (!ok) {
+    showErr('Key inválida. Asegurate de copiarla completa desde aistudio.google.com');
+    return;
+  }
+
+  geminiKey = k;
+  localStorage.setItem(KEY_STORE, k);
+  launch();
+}
+
+async function testKey(k) {
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${k}`,
+      { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ contents:[{parts:[{text:'ok'}]}], generationConfig:{maxOutputTokens:3} }) }
+    );
+    const d = await r.json();
+    return !d.error;
+  } catch { return false; }
+}
+
+function showErr(msg) {
+  const el = document.getElementById('setupErr');
+  el.textContent = '⚠️ ' + msg;
+  el.style.display = 'block';
+}
+
+function resetKey() {
+  if (!confirm('¿Cambiar la API Key?')) return;
+  localStorage.removeItem(KEY_STORE);
+  geminiKey = '';
+  document.getElementById('keyInput').value = '';
+  document.getElementById('setupErr').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('setupScreen').style.display = 'flex';
+}
+
+function launch() {
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  updateDate();
+  loadAgenda();
+  setInterval(loadAgenda, 30 * 60 * 1000);
+}
+
+// ── DATE ───────────────────────────────────────────────
+function updateDate() {
+  const s = new Date().toLocaleDateString('es-AR', {
+    weekday:'long', day:'numeric', month:'long',
+    timeZone:'America/Argentina/Buenos_Aires'
+  });
+  document.getElementById('dateLabel').textContent = s.replace(/^\w/,c=>c.toUpperCase());
+}
+
+// ── GEMINI ─────────────────────────────────────────────
+async function callGemini(prompt) {
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+    { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{parts:[{text:prompt}]}],
+        generationConfig:{ temperature:0.2, maxOutputTokens:2000 }
+      }) }
+  );
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  return d.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+// ── LOAD ───────────────────────────────────────────────
+async function loadAgenda() {
+  const btn = document.getElementById('btnRefresh');
+  btn.style.animation = 'spin 1s linear infinite';
+  btn.disabled = true;
+
+  document.getElementById('content').innerHTML = `
+    <div class="loading-screen">
+      <div class="load-orb"></div>
+      <div class="load-txt">Consultando agenda con<br><b>Gemini AI</b>…</div>
+    </div>`;
+
+  const today = new Date().toLocaleDateString('es-AR', {
+    weekday:'long', year:'numeric', month:'long', day:'numeric',
+    timeZone:'America/Argentina/Buenos_Aires'
+  });
+  const nowArg = new Date().toLocaleTimeString('es-AR', {
+    hour:'2-digit', minute:'2-digit',
+    timeZone:'America/Argentina/Buenos_Aires', hour12:false
+  });
+
+  const prompt = `Hoy es ${today} en Argentina. Son las ${nowArg} (GMT-3).
+
+Generá la agenda deportiva completa de hoy para Argentina. Incluí:
+- Fútbol: Liga Profesional Argentina, Copa Argentina, Libertadores, Sudamericana, Champions League, Europa League, Premier League, La Liga, y otros partidos importantes de hoy.
+- Básquet: NBA, Liga Nacional Argentina.
+- Fórmula 1: si hoy hay Carrera, Clasificación, Sprint o Práctica Libre.
+- Tenis: torneos ATP o WTA con partidos destacados hoy.
+
+Para cada evento indicá el canal de TV argentina donde se transmite: ESPN, ESPN Premium, Star+, DSports, DSports+, TyC Sports, DIRECTV Sports, Canal 7, Telefe, América TV, Flow Sport, TNT Sports.
+
+Respondé ÚNICAMENTE con JSON puro. Sin texto antes ni después. Sin backticks. Sin markdown. Solo el array JSON.
+
+Formato de cada objeto:
+{"sport":"futbol","title":"River vs Boca","subtitle":"Liga Profesional · Fecha 15","time":"21:00","isLive":false,"channels":["ESPN Premium","Star+"],"venue":"Monumental"}
+
+Valores válidos de sport: futbol, basket, f1, tennis
+time: formato HH:MM hora argentina
+isLive: true si está jugándose ahora (son las ${nowArg})
+channels: array de strings con canales argentinos
+venue: string o vacío
+
+Incluí entre 10 y 16 eventos reales de hoy.`;
+
+  try {
+    const raw = await callGemini(prompt);
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const m = clean.match(/\[[\s\S]*\]/);
+    if (!m) throw new Error('No se recibieron eventos. Intentá de nuevo.');
+
+    allEvents = JSON.parse(m[0]);
+    if (!Array.isArray(allEvents) || !allEvents.length)
+      throw new Error('No hay eventos para hoy.');
+
+    const t = new Date().toLocaleTimeString('es-AR',{
+      hour:'2-digit',minute:'2-digit',
+      timeZone:'America/Argentina/Buenos_Aires'
+    });
+    document.getElementById('updTime').textContent = t;
+    document.getElementById('updLabel').style.display = 'flex';
+
+    setFilter(currentFilter);
+  } catch(err) {
+    document.getElementById('content').innerHTML = `
+      <div class="error-screen">
+        <div class="err-icon">⚠️</div>
+        <div class="err-title">No se pudo cargar</div>
+        <div class="err-msg">${err.message}</div>
+        <button class="btn-retry" onclick="loadAgenda()">↻ Reintentar</button>
+      </div>`;
+  } finally {
+    btn.style.animation = '';
+    btn.textContent = '↻';
+    btn.disabled = false;
+  }
+}
+
+// ── FILTER ─────────────────────────────────────────────
+function setFilter(sport) {
+  currentFilter = sport;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[data-s="${sport}"]`).classList.add('active');
+
+  const list = sport === 'todos' ? allEvents : allEvents.filter(e => e.sport === sport);
+  renderEvents(list, sport);
+}
+
+// ── RENDER ─────────────────────────────────────────────
+function renderEvents(evs, filter) {
+  const content = document.getElementById('content');
+
+  if (!evs.length) {
+    content.innerHTML = `<div class="empty-screen">😴 No hay eventos para este deporte hoy.</div>`;
+    return;
+  }
+
+  // Si es "todos", agrupar por deporte
+  if (filter === 'todos') {
+    const order = ['futbol','basket','f1','tennis'];
+    let html = '';
+    for (const sport of order) {
+      const group = evs.filter(e => e.sport === sport);
+      if (!group.length) continue;
+      const m = SPORT_META[sport];
+      html += `<div class="section-label">${m.icon} ${m.label}</div>`;
+      html += group.map(ev => cardHTML(ev)).join('');
+    }
+    content.innerHTML = html;
+  } else {
+    content.innerHTML = evs.map(ev => cardHTML(ev)).join('');
+  }
+}
+
+function cardHTML(ev) {
+  const chs = Array.isArray(ev.channels) ? ev.channels : [];
+  return `
+  <div class="event-card" data-s="${ev.sport}">
+    <div class="card-header">
+      <span class="sport-chip">${SPORT_META[ev.sport]?.icon || '🏅'} ${SPORT_META[ev.sport]?.label || ev.sport}</span>
+      ${ev.isLive
+        ? `<span class="live-chip"><span class="live-pulse"></span>EN VIVO</span>`
+        : `<span class="time-chip">🕐 ${ev.time}</span>`}
+    </div>
+    <div class="ev-title">${ev.title}</div>
+    <div class="ev-sub">${ev.subtitle || ''}</div>
+    <div class="card-footer">
+      <div class="channels">
+        ${chs.length
+          ? chs.map(c=>`<span class="ch">📺 ${c}</span>`).join('')
+          : `<span style="font-size:11px;color:var(--muted)">Sin transmisión confirmada</span>`}
+      </div>
+      ${ev.venue ? `<span class="venue">📍 ${ev.venue}</span>` : ''}
+    </div>
+  </div>`;
+}
+</script>
+</body>
+</html>
