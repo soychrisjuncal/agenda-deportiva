@@ -551,6 +551,33 @@ body {
 .event-card:nth-child(6){animation-delay:.18s}
 .event-card:nth-child(7){animation-delay:.21s}
 .event-card:nth-child(8){animation-delay:.24s}
+
+/* ── SCORE / FINISHED ────────────────────────────── */
+.score-badge {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 900;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.card-finished {
+  opacity: .65;
+}
+
+.card-finished::before {
+  background: #333 !important;
+}
+
+.title-finished {
+  text-decoration: line-through;
+  text-decoration-color: #444;
+  color: #666;
+}
 </style>
 </head>
 <body>
@@ -631,21 +658,24 @@ function getArgNow() {
   const now = new Date();
   const TZ = 'America/Argentina/Buenos_Aires';
   const p = {};
-  new Intl.DateTimeFormat('es-AR', { timeZone:TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false }).formatToParts(now).forEach(x => p[x.type] = x.value);
+  new Intl.DateTimeFormat('es-AR', {
+    timeZone:TZ, year:'numeric', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', hour12:false
+  }).formatToParts(now).forEach(x => p[x.type] = x.value);
   return {
     iso:     p.year + '-' + p.month + '-' + p.day,
     dayName: new Intl.DateTimeFormat('es-AR', { timeZone:TZ, weekday:'long' }).format(now),
     day:     p.day,
     month:   new Intl.DateTimeFormat('es-AR', { timeZone:TZ, month:'long' }).format(now),
     year:    p.year,
-    time:    p.hour + ':' + p.minute
+    time:    p.hour + ':' + p.minute,
+    totalMin: parseInt(p.hour)*60 + parseInt(p.minute)
   };
 }
 
 async function callAI(prompt) {
   const r = await fetch(WORKER_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
+    method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ prompt })
   });
   if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || 'Error ' + r.status); }
@@ -661,7 +691,7 @@ async function loadAgenda() {
   document.getElementById('statsBar').style.display = 'none';
   document.getElementById('updRow').style.display = 'none';
 
-  const { iso, dayName, day, month, year, time: nowArg } = getArgNow();
+  const { iso, dayName, day, month, year, time: nowArg, totalMin } = getArgNow();
 
   document.getElementById('content').innerHTML =
     '<div class="loading-screen">' +
@@ -676,29 +706,46 @@ async function loadAgenda() {
   }, 400);
 
   const prompt =
-    'Fecha: ' + iso + ' (' + dayName + ' ' + day + ' ' + month + ' ' + year + '). Hora Argentina: ' + nowArg + '.' +
-    ' Agenda deportiva de HOY ' + iso + ' para Argentina.' +
-    ' Responde SOLO JSON array, sin texto extra, sin backticks.' +
-    ' Formato: [{"sport":"futbol","title":"Equipo A vs Equipo B","subtitle":"Competicion","time":"21:00","isLive":false,"channels":["ESPN"],"venue":"Estadio"}]' +
-    ' sport debe ser: futbol, basket, f1, tennis o boxeo.' +
-    ' isLive=true si el evento esta en curso ahora a las ' + nowArg + '.' +
-    ' Incluye: futbol (Liga Profesional Argentina, Libertadores, Champions, Premier, LaLiga, NBA, F1 si hay hoy, ATP/WTA si hay hoy, peleas de boxeo si hay hoy).' +
-    ' TV argentina: ESPN, ESPN Premium, Star+, DSports, TyC Sports, Canal 7, TNT Sports, DIRECTV Sports.' +
-    ' Solo eventos de HOY ' + iso + '. Entre 8 y 14 eventos reales.';
+    'Fecha HOY: ' + iso + ' (' + dayName + ' ' + day + ' de ' + month + ' de ' + year + '). ' +
+    'Hora actual Argentina: ' + nowArg + ' (GMT-3, hora exacta del usuario).' +
+    '\n\nGenerá la agenda deportiva de HOY ' + iso + ' para Argentina. ' +
+    'REGLAS ESTRICTAS:\n' +
+    '1. FUTBOL significa SOLO fútbol soccer (no rugby, no americano, no australiano).\n' +
+    '2. Incluí partidos que ya terminaron HOY ' + iso + ' con su resultado final (score).\n' +
+    '3. Incluí partidos en curso ahora a las ' + nowArg + '.\n' +
+    '4. Incluí partidos que faltan jugarse HOY ' + iso + '.\n' +
+    '5. Deportes: futbol (soccer), basket (NBA + Liga Nacional Argentina), f1 (solo si hay GP/clasif/sprint/practica HOY), tennis (ATP/WTA HOY), boxeo (peleas HOY).\n' +
+    '6. TV argentina: ESPN, ESPN Premium, Star+, DSports, TyC Sports, Canal 7, TNT Sports, DIRECTV Sports.\n' +
+    '\nResponde SOLO con array JSON puro, sin texto, sin backticks:\n' +
+    '[{"sport":"futbol","title":"River vs Boca","subtitle":"Liga Profesional - Fecha 15","time":"21:00","status":"upcoming","score":"","channels":["ESPN Premium"],"venue":"Monumental"}]' +
+    '\n\nCampos:\n' +
+    '- sport: futbol|basket|f1|tennis|boxeo\n' +
+    '- title: nombre corto del evento\n' +
+    '- subtitle: competicion y fecha/ronda\n' +
+    '- time: HH:MM hora argentina\n' +
+    '- status: "live" si juega AHORA a las ' + nowArg + ', "finished" si ya termino, "upcoming" si falta\n' +
+    '- score: resultado si status=finished (ej "2-1") o marcador parcial si status=live, vacio si upcoming\n' +
+    '- channels: array TV argentina\n' +
+    '- venue: estadio o circuito\n' +
+    'Solo HOY ' + iso + '. Entre 8 y 14 eventos reales.';
 
   try {
     const raw = await callAI(prompt);
     clearInterval(dotTimer);
 
-    // Robust JSON extraction
     let jsonStr = raw.replace(/```json|```/g, '').trim();
     const start = jsonStr.indexOf('[');
     const end = jsonStr.lastIndexOf(']');
-    if (start === -1 || end === -1) throw new Error('Respuesta inválida de la IA. Reintentá en unos segundos.');
+    if (start === -1 || end === -1) throw new Error('Respuesta inválida. Reintentá en unos segundos.');
     jsonStr = jsonStr.slice(start, end + 1);
-
     allEvents = JSON.parse(jsonStr);
     if (!Array.isArray(allEvents) || !allEvents.length) throw new Error('No se encontraron eventos para hoy ' + iso + '.');
+
+    // Fix isLive based on status field
+    allEvents = allEvents.map(ev => ({
+      ...ev,
+      isLive: ev.status === 'live'
+    }));
 
     document.getElementById('updTime').textContent = nowArg;
     document.getElementById('updRow').style.display = 'flex';
@@ -720,7 +767,7 @@ async function loadAgenda() {
 
 function updateStats() {
   document.getElementById('statTotal').textContent = allEvents.length;
-  document.getElementById('statLive').textContent = allEvents.filter(e=>e.isLive).length;
+  document.getElementById('statLive').textContent = allEvents.filter(e=>e.status==='live').length;
   document.getElementById('statFut').textContent = allEvents.filter(e=>e.sport==='futbol').length;
   document.getElementById('statOther').textContent = allEvents.filter(e=>e.sport!=='futbol').length;
   document.getElementById('statsBar').style.display = 'grid';
@@ -743,33 +790,60 @@ function setFilter(sport) {
 function renderEvents(evs) {
   const el = document.getElementById('content');
   if (!evs.length) { el.innerHTML = '<div class="empty-screen">SIN EVENTOS HOY</div>'; return; }
-  const live = evs.filter(e=>e.isLive);
-  const upcoming = sortByTime(evs.filter(e=>!e.isLive));
+
+  const live     = evs.filter(e => e.status === 'live');
+  const finished = sortByTime(evs.filter(e => e.status === 'finished')).reverse(); // más reciente primero
+  const upcoming = sortByTime(evs.filter(e => e.status === 'upcoming' || (!e.status && !e.isLive)));
+
   let html = '';
+
+  // EN VIVO
   if (live.length) {
-    html += '<div class="live-section"><div class="live-header"><span class="live-dot-anim"></span>' +
-      '<span class="live-label">EN VIVO AHORA</span><span class="live-count">'+live.length+' EVENTOS</span></div>' +
-      live.map(cardHTML).join('') + '</div>';
+    html += '<div class="live-section">' +
+      '<div class="live-header"><span class="live-dot-anim"></span>' +
+      '<span class="live-label">EN VIVO AHORA</span>' +
+      '<span class="live-count">'+live.length+' EVENTOS</span></div>' +
+      live.map(ev => cardHTML(ev)).join('') + '</div>';
   }
+
+  // PRÓXIMOS
   if (upcoming.length) {
-    if (live.length) html += '<div class="upcoming-header"><span class="upcoming-label">PRÓXIMOS</span><span class="upcoming-line"></span></div>';
-    html += upcoming.map(cardHTML).join('');
+    html += '<div class="upcoming-header"><span class="upcoming-label">PRÓXIMOS</span><span class="upcoming-line"></span></div>';
+    html += upcoming.map(ev => cardHTML(ev)).join('');
   }
+
+  // RESULTADOS
+  if (finished.length) {
+    html += '<div class="upcoming-header"><span class="upcoming-label" style="color:#555">RESULTADOS DE HOY</span><span class="upcoming-line"></span></div>';
+    html += finished.map(ev => cardHTML(ev)).join('');
+  }
+
   el.innerHTML = html;
 }
 
 function cardHTML(ev) {
   const chs = Array.isArray(ev.channels) ? ev.channels : [];
   const meta = SPORT_META[ev.sport] || { icon:'🏅', label: ev.sport };
-  const accentColor = {futbol:'var(--lime)',basket:'var(--orange)',f1:'var(--red)',tennis:'#a259ff',boxeo:'#f0a500'}[ev.sport] || '#fff';
-  return '<div class="event-card" data-s="' + ev.sport + '">' +
+  const isFinished = ev.status === 'finished';
+  const isLive = ev.status === 'live';
+
+  // Score badge
+  let rightBadge = '';
+  if (isLive) {
+    rightBadge = '<span class="live-badge"><span class="live-badge-dot"></span>LIVE' +
+      (ev.score ? ' ' + ev.score : '') + '</span>';
+  } else if (isFinished) {
+    rightBadge = '<span class="score-badge">' + (ev.score || 'FIN') + '</span>';
+  } else {
+    rightBadge = '<span class="time-tag">' + (ev.time||'--') + ' HS</span>';
+  }
+
+  return '<div class="event-card' + (isFinished ? ' card-finished' : '') + '" data-s="' + ev.sport + '">' +
     '<div class="card-top">' +
       '<span class="sport-badge">' + meta.icon + ' ' + meta.label.toUpperCase() + '</span>' +
-      (ev.isLive
-        ? '<span class="live-badge"><span class="live-badge-dot"></span>LIVE</span>'
-        : '<span class="time-tag">' + (ev.time||'--') + ' HS</span>') +
+      rightBadge +
     '</div>' +
-    '<div class="ev-title">' + ev.title + '</div>' +
+    '<div class="ev-title' + (isFinished ? ' title-finished' : '') + '">' + ev.title + '</div>' +
     '<div class="ev-sub">' + (ev.subtitle||'') + '</div>' +
     '<div class="card-footer"><div class="channels">' +
       (chs.length
