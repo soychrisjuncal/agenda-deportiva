@@ -257,6 +257,7 @@ body {
 .event-card[data-s="basket"]::before { background: var(--orange); }
 .event-card[data-s="f1"]::before     { background: var(--red); }
 .event-card[data-s="tennis"]::before { background: #a259ff; }
+.event-card[data-s="boxeo"]::before  { background: #f0a500; }
 
 .card-top {
   display: flex;
@@ -278,6 +279,7 @@ body {
 .event-card[data-s="basket"] .sport-badge { background: rgba(255,77,0,.12);   color: var(--orange); }
 .event-card[data-s="f1"]     .sport-badge { background: rgba(224,32,32,.12);  color: #ff6b6b; }
 .event-card[data-s="tennis"] .sport-badge { background: rgba(162,89,255,.12); color: #bf8bff; }
+.event-card[data-s="boxeo"]  .sport-badge { background: rgba(240,165,0,.12);   color: #f0a500; }
 
 .time-tag {
   font-family: 'Barlow Condensed', sans-serif;
@@ -571,6 +573,7 @@ body {
     <div class="tab"        data-s="basket" onclick="setFilter('basket')">🏀 BÁSQUET</div>
     <div class="tab"        data-s="f1"     onclick="setFilter('f1')">🏎️ F1</div>
     <div class="tab"        data-s="tennis" onclick="setFilter('tennis')">🎾 TENIS</div>
+    <div class="tab"        data-s="boxeo"  onclick="setFilter('boxeo')">🥊 BOXEO</div>
   </div>
 </div>
 
@@ -612,6 +615,7 @@ const SPORT_META = {
   basket: { icon:'🏀', label:'Básquet' },
   f1:     { icon:'🏎️', label:'Fórmula 1' },
   tennis: { icon:'🎾', label:'Tenis' },
+  boxeo:  { icon:'🥊', label:'Boxeo' },
 };
 let allEvents = [];
 let currentFilter = 'todos';
@@ -671,36 +675,31 @@ async function loadAgenda() {
     if (el) { dots = dots >= 3 ? 1 : dots+1; el.textContent = '.'.repeat(dots); }
   }, 400);
 
-  const prompt = 'HOY ES: ' + dayName + ' ' + day + ' de ' + month + ' de ' + year + '. FECHA ISO: ' + iso + '. HORA ARGENTINA: ' + nowArg + ' (GMT-3).\n\n' +
-    'Generá la agenda deportiva SOLO de hoy ' + iso + ' para Argentina.\n' +
-    'DEPORTES: futbol (Liga Profesional, Libertadores, Champions, Premier, LaLiga, etc), basket (NBA, Liga Nacional), f1 (solo si hay evento hoy), tennis (ATP/WTA).\n' +
-    'TV ARGENTINA: ESPN, ESPN Premium, Star+, DSports, TyC Sports, DIRECTV Sports, Canal 7, TNT Sports.\n\n' +
-    'RESPONDE SOLO con array JSON puro, sin texto, sin backticks:\n' +
-    '[{"sport":"futbol","title":"River vs Boca","subtitle":"Liga Profesional","time":"21:00","isLive":false,"channels":["ESPN Premium"],"venue":"Monumental"}]\n\n' +
-    'sport=futbol|basket|f1|tennis, time=HH:MM hora argentina, isLive=true si juega AHORA a las ' + nowArg + ', channels=array, venue=string.\n' +
-    'Solo eventos de HOY ' + iso + '. Máximo 6 eventos. Sé MUY breve en cada campo. titulo corto.';
+  const prompt =
+    'Fecha: ' + iso + ' (' + dayName + ' ' + day + ' ' + month + ' ' + year + '). Hora Argentina: ' + nowArg + '.' +
+    ' Agenda deportiva de HOY ' + iso + ' para Argentina.' +
+    ' Responde SOLO JSON array, sin texto extra, sin backticks.' +
+    ' Formato: [{"sport":"futbol","title":"Equipo A vs Equipo B","subtitle":"Competicion","time":"21:00","isLive":false,"channels":["ESPN"],"venue":"Estadio"}]' +
+    ' sport debe ser: futbol, basket, f1, tennis o boxeo.' +
+    ' isLive=true si el evento esta en curso ahora a las ' + nowArg + '.' +
+    ' Incluye: futbol (Liga Profesional Argentina, Libertadores, Champions, Premier, LaLiga, NBA, F1 si hay hoy, ATP/WTA si hay hoy, peleas de boxeo si hay hoy).' +
+    ' TV argentina: ESPN, ESPN Premium, Star+, DSports, TyC Sports, Canal 7, TNT Sports, DIRECTV Sports.' +
+    ' Solo eventos de HOY ' + iso + '. Entre 8 y 14 eventos reales.';
 
   try {
     const raw = await callAI(prompt);
     clearInterval(dotTimer);
-    console.log('RAW RESPONSE:', raw);
 
-    // Extract array robustly
+    // Robust JSON extraction
     let jsonStr = raw.replace(/```json|```/g, '').trim();
     const start = jsonStr.indexOf('[');
     const end = jsonStr.lastIndexOf(']');
-    if (start === -1 || end === -1) throw new Error('La IA no devolvió JSON válido.');
+    if (start === -1 || end === -1) throw new Error('Respuesta inválida de la IA. Reintentá en unos segundos.');
     jsonStr = jsonStr.slice(start, end + 1);
 
-    // Fix common AI JSON mistakes
-    jsonStr = jsonStr
-      .replace(/,\s*}/g, '}')      // trailing commas in objects
-      .replace(/,\s*]/g, ']')      // trailing commas in arrays
-      .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":')  // unquoted keys
-      .replace(/:\s*'([^']*)'/g, ': "$1"');          // single quotes -> double
-
     allEvents = JSON.parse(jsonStr);
-    if (!Array.isArray(allEvents) || !allEvents.length) throw new Error('No hay eventos para hoy ' + iso);
+    if (!Array.isArray(allEvents) || !allEvents.length) throw new Error('No se encontraron eventos para hoy ' + iso + '.');
+
     document.getElementById('updTime').textContent = nowArg;
     document.getElementById('updRow').style.display = 'flex';
     updateStats();
@@ -748,7 +747,9 @@ function renderEvents(evs) {
   const upcoming = sortByTime(evs.filter(e=>!e.isLive));
   let html = '';
   if (live.length) {
-    html += '<div class="live-section"><div class="live-header"><span class="live-dot-anim"></span><span class="live-label">EN VIVO AHORA</span><span class="live-count">'+live.length+' EVENTOS</span></div>' + live.map(cardHTML).join('') + '</div>';
+    html += '<div class="live-section"><div class="live-header"><span class="live-dot-anim"></span>' +
+      '<span class="live-label">EN VIVO AHORA</span><span class="live-count">'+live.length+' EVENTOS</span></div>' +
+      live.map(cardHTML).join('') + '</div>';
   }
   if (upcoming.length) {
     if (live.length) html += '<div class="upcoming-header"><span class="upcoming-label">PRÓXIMOS</span><span class="upcoming-line"></span></div>';
@@ -760,13 +761,20 @@ function renderEvents(evs) {
 function cardHTML(ev) {
   const chs = Array.isArray(ev.channels) ? ev.channels : [];
   const meta = SPORT_META[ev.sport] || { icon:'🏅', label: ev.sport };
+  const accentColor = {futbol:'var(--lime)',basket:'var(--orange)',f1:'var(--red)',tennis:'#a259ff',boxeo:'#f0a500'}[ev.sport] || '#fff';
   return '<div class="event-card" data-s="' + ev.sport + '">' +
-    '<div class="card-top"><span class="sport-badge">' + meta.icon + ' ' + meta.label.toUpperCase() + '</span>' +
-    (ev.isLive ? '<span class="live-badge"><span class="live-badge-dot"></span>LIVE</span>' : '<span class="time-tag">' + (ev.time||'') + ' HS</span>') + '</div>' +
+    '<div class="card-top">' +
+      '<span class="sport-badge">' + meta.icon + ' ' + meta.label.toUpperCase() + '</span>' +
+      (ev.isLive
+        ? '<span class="live-badge"><span class="live-badge-dot"></span>LIVE</span>'
+        : '<span class="time-tag">' + (ev.time||'--') + ' HS</span>') +
+    '</div>' +
     '<div class="ev-title">' + ev.title + '</div>' +
     '<div class="ev-sub">' + (ev.subtitle||'') + '</div>' +
     '<div class="card-footer"><div class="channels">' +
-    (chs.length ? chs.map(c=>'<span class="ch">'+c+'</span>').join('') : '<span class="ch" style="color:var(--muted2)">SIN TV CONFIRMADA</span>') +
+      (chs.length
+        ? chs.map(c=>'<span class="ch">'+c+'</span>').join('')
+        : '<span class="ch" style="color:var(--muted2)">SIN TV CONFIRMADA</span>') +
     '</div>' + (ev.venue ? '<span class="venue">'+ev.venue+'</span>' : '') + '</div></div>';
 }
 </script>
