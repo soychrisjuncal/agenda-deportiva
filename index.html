@@ -574,9 +574,7 @@ body {
 }
 
 .title-finished {
-  text-decoration: line-through;
-  text-decoration-color: #444;
-  color: #666;
+  color: #888;
 }
 </style>
 </head>
@@ -723,8 +721,8 @@ async function loadAgenda() {
     '- title: nombre corto del evento\n' +
     '- subtitle: competicion y fecha/ronda\n' +
     '- time: HH:MM hora argentina\n' +
-    '- status: "live" si juega AHORA a las ' + nowArg + ', "finished" si ya termino, "upcoming" si falta\n' +
-    '- score: resultado si status=finished (ej "2-1") o marcador parcial si status=live, vacio si upcoming\n' +
+    '- status: PON "upcoming" si el partido NO empezo aun. "live" SOLO si esta en curso ahora a las ' + nowArg + '. "finished" SOLO si termino antes de las ' + nowArg + ' y sabes el resultado real con seguridad.\n' +
+    '- score: SOLO si status=finished y el resultado es 100% real. Si tienes alguna duda del resultado, usa status "upcoming" y deja score vacio. NUNCA inventes resultados.\n' +
     '- channels: array TV argentina\n' +
     '- venue: estadio o circuito\n' +
     'Solo HOY ' + iso + '. Entre 8 y 14 eventos reales.';
