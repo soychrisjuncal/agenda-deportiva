@@ -678,7 +678,7 @@ async function loadAgenda() {
     'RESPONDE SOLO con array JSON puro, sin texto, sin backticks:\n' +
     '[{"sport":"futbol","title":"River vs Boca","subtitle":"Liga Profesional","time":"21:00","isLive":false,"channels":["ESPN Premium"],"venue":"Monumental"}]\n\n' +
     'sport=futbol|basket|f1|tennis, time=HH:MM hora argentina, isLive=true si juega AHORA a las ' + nowArg + ', channels=array, venue=string.\n' +
-    'Solo eventos de HOY ' + iso + '. Entre 8 y 16 eventos.';
+    'Solo eventos de HOY ' + iso + '. Máximo 6 eventos. Sé MUY breve en cada campo. titulo corto.';
 
   try {
     const raw = await callAI(prompt);
