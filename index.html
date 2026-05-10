@@ -607,79 +607,62 @@ body {
 
 <script>
 const WORKER_URL = 'https://gemini-proxy.juncalcf.workers.dev';
-
 const SPORT_META = {
-  futbol: { icon:'⚽', label:'Fútbol'    },
-  basket: { icon:'🏀', label:'Básquet'   },
+  futbol: { icon:'⚽', label:'Fútbol' },
+  basket: { icon:'🏀', label:'Básquet' },
   f1:     { icon:'🏎️', label:'Fórmula 1' },
-  tennis: { icon:'🎾', label:'Tenis'     },
+  tennis: { icon:'🎾', label:'Tenis' },
 };
-
 let allEvents = [];
 let currentFilter = 'todos';
 
-window.addEventListener('DOMContentLoaded', () => {
-  updateDate();
-  loadAgenda();
-  setInterval(loadAgenda, 30 * 60 * 1000);
-});
+window.addEventListener('DOMContentLoaded', () => { updateDate(); loadAgenda(); setInterval(loadAgenda, 30*60*1000); });
 
 function updateDate() {
-  const s = new Date().toLocaleDateString('es-AR', {
-    weekday:'short', day:'numeric', month:'short',
-    timeZone:'America/Argentina/Buenos_Aires'
-  });
+  const s = new Date().toLocaleDateString('es-AR', { weekday:'short', day:'numeric', month:'short', timeZone:'America/Argentina/Buenos_Aires' });
   document.getElementById('dateLabel').textContent = s.toUpperCase();
 }
 
-// Streaming fetch — llama al worker con stream:true
+function getArgNow() {
+  const now = new Date();
+  const TZ = 'America/Argentina/Buenos_Aires';
+  const fmt = (opts) => new Intl.DateTimeFormat('es-AR', { timeZone: TZ, ...opts }).format(now);
+  const p = {};
+  new Intl.DateTimeFormat('es-AR', { timeZone:TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false }).formatToParts(now).forEach(x => p[x.type] = x.value);
+  return {
+    iso:     p.year + '-' + p.month + '-' + p.day,
+    dayName: fmt({ weekday:'long' }),
+    day:     p.day,
+    month:   fmt({ month:'long' }),
+    year:    p.year,
+    time:    p.hour + ':' + p.minute
+  };
+}
+
 async function callAI(prompt, onChunk) {
   const r = await fetch(WORKER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ prompt, stream: true })
   });
-  if (!r.ok) {
-    const err = await r.json().catch(() => ({}));
-    throw new Error(err.error || 'Error del servidor ' + r.status);
-  }
+  if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || 'Error ' + r.status); }
   const reader = r.body.getReader();
-  const decoder = new TextDecoder();
+  const dec = new TextDecoder();
   let full = '';
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    const chunk = decoder.decode(value, { stream: true });
-    for (const line of chunk.split('\n')) {
+    for (const line of dec.decode(value, { stream:true }).split('\n')) {
       if (!line.startsWith('data: ')) continue;
-      const data = line.slice(6).trim();
-      if (data === '[DONE]') continue;
+      const d = line.slice(6).trim();
+      if (d === '[DONE]') continue;
       try {
-        const token = JSON.parse(data).choices?.[0]?.delta?.content || '';
-        if (token) { full += token; if (onChunk) onChunk(full); }
+        const tok = JSON.parse(d).choices?.[0]?.delta?.content || '';
+        if (tok) { full += tok; if (onChunk) onChunk(full); }
       } catch {}
     }
   }
   return full;
-}
-
-function getArgTime() {
-  const TZ = 'America/Argentina/Buenos_Aires';
-  const now = new Date();
-  const parts = {};
-  new Intl.DateTimeFormat('es-AR', {
-    timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit',
-    hour:'2-digit', minute:'2-digit', hour12: false,
-    weekday:'long'
-  }).formatToParts(now).forEach(p => { parts[p.type] = p.value; });
-  return {
-    date: `${parts.year}-${parts.month}-${parts.day}`,
-    dayName: parts.weekday,
-    day: parts.day,
-    month: now.toLocaleDateString('es-AR', { timeZone: TZ, month:'long' }),
-    year: parts.year,
-    time: `${parts.hour}:${parts.minute}`
-  };
 }
 
 async function loadAgenda() {
@@ -689,77 +672,48 @@ async function loadAgenda() {
   document.getElementById('statsBar').style.display = 'none';
   document.getElementById('updRow').style.display = 'none';
 
-  const { date, dayName, day, month, year, time: nowArg } = getArgTime();
+  const { iso, dayName, day, month, year, time: nowArg } = getArgNow();
 
-  // Show streaming UI
   document.getElementById('content').innerHTML =
     '<div class="loading-screen">' +
       '<div class="load-bar-wrap"><div class="load-bar"></div></div>' +
-      '<div class="load-txt">CONSULTANDO IA<span id="streamDots">.</span></div>' +
+      '<div class="load-txt">CARGANDO <span id="streamDots">.</span></div>' +
     '</div>' +
     '<div id="streamCards"></div>';
 
-  let dotCount = 1;
+  let dots = 1;
   const dotTimer = setInterval(() => {
     const el = document.getElementById('streamDots');
-    if (el) { dotCount = dotCount >= 3 ? 1 : dotCount + 1; el.textContent = '.'.repeat(dotCount); }
+    if (el) { dots = dots >= 3 ? 1 : dots+1; el.textContent = '.'.repeat(dots); }
   }, 400);
 
-  let streamedCount = 0;
+  const prompt = 'HOY ES: ' + dayName + ' ' + day + ' de ' + month + ' de ' + year + '. FECHA ISO: ' + iso + '. HORA ARGENTINA: ' + nowArg + ' (GMT-3).\n\n' +
+    'Generá la agenda deportiva SOLO de hoy ' + iso + ' para Argentina.\n' +
+    'DEPORTES: futbol (Liga Profesional, Libertadores, Champions, Premier, LaLiga, etc), basket (NBA, Liga Nacional), f1 (solo si hay evento hoy ' + iso + '), tennis (ATP/WTA).\n' +
+    'TV ARGENTINA: ESPN, ESPN Premium, Star+, DSports, TyC Sports, DIRECTV Sports, Canal 7, TNT Sports.\n\n' +
+    'RESPONDE SOLO con array JSON puro, sin texto, sin backticks:\n' +
+    '[{"sport":"futbol","title":"River vs Boca","subtitle":"Liga Profesional","time":"21:00","isLive":false,"channels":["ESPN Premium"],"venue":"Monumental"}]\n\n' +
+    'sport=futbol|basket|f1|tennis, time=HH:MM hora argentina, isLive=true si juega AHORA a las ' + nowArg + ', channels=array, venue=string.\n' +
+    'Solo eventos de HOY ' + iso + '. Entre 8 y 16 eventos.';
 
-  const prompt =
-    'LA FECHA DE HOY ES: ' + dayName + ' ' + day + ' de ' + month + ' de ' + year + ' (' + date + ').
-' +
-    'SON LAS ' + nowArg + ' HORA ARGENTINA (GMT-3).
-' +
-    'ATENCIÓN: USA EXCLUSIVAMENTE la fecha ' + date + '. No uses fechas de tu entrenamiento.
-
-' +
-    'Generá la agenda deportiva ÚNICAMENTE de HOY ' + date + ' para Argentina:
-' +
-    '- Fútbol: Liga Profesional Argentina, Copa Argentina, Libertadores, Sudamericana, Champions League, Europa League, Premier League, La Liga, Serie A.
-' +
-    '- Básquet: NBA, Liga Nacional Argentina.
-' +
-    '- Fórmula 1: SOLO si HOY ' + date + ' hay Carrera, Clasificación, Sprint o Práctica.
-' +
-    '- Tenis: torneos ATP o WTA con partidos HOY ' + date + '.
-
-' +
-    'Canal de TV argentina: ESPN, ESPN Premium, Star+, DSports, TyC Sports, DIRECTV Sports, Canal 7, Flow Sport, TNT Sports.
-
-' +
-    'SOLO eventos de HOY ' + date + '. Si no hay de algún deporte, no lo incluyas.
-
-' +
-    'Respondé ÚNICAMENTE con JSON puro. Sin texto. Sin backticks. Solo el array:
-' +
-    '[{"sport":"futbol","title":"River vs Boca","subtitle":"Liga Profesional","time":"21:00","isLive":false,"channels":["ESPN Premium"],"venue":"Monumental"}]
-
-' +
-    'sport: futbol|basket|f1|tennis · time: HH:MM argentina · isLive: true si está en curso AHORA a las ' + nowArg + ' · channels: array · venue: opcional.
-' +
-    'Entre 8 y 16 eventos reales de HOY ' + date + '.';
-
+  let streamed = 0;
   try {
     const raw = await callAI(prompt, (partial) => {
-      // Parse complete objects as they stream in
       try {
-        const clean = partial.replace(/```json|```/g, '').trim();
-        const regex = /\{[^{}]*"title"[^{}]*\}/g;
-        const matches = [...clean.matchAll(regex)];
-        if (matches.length > streamedCount) {
-          const container = document.getElementById('streamCards');
-          if (!container) return;
-          matches.slice(streamedCount).forEach(m => {
+        const re = /\{"sport":"[^"]+","title":"[^"]*"[^}]*\}/g;
+        const hits = [...partial.matchAll(re)];
+        if (hits.length > streamed) {
+          const box = document.getElementById('streamCards');
+          if (!box) return;
+          hits.slice(streamed).forEach(h => {
             try {
-              const ev = JSON.parse(m[0]);
+              const ev = JSON.parse(h[0]);
               if (ev.sport && ev.title) {
-                const wrap = document.createElement('div');
-                wrap.style.cssText = 'padding:0 16px 10px;animation:slideUp .3s ease both';
-                wrap.innerHTML = cardHTML(ev);
-                container.appendChild(wrap);
-                streamedCount++;
+                const w = document.createElement('div');
+                w.style.cssText = 'padding:0 16px 10px';
+                w.innerHTML = cardHTML(ev);
+                box.appendChild(w);
+                streamed++;
               }
             } catch {}
           });
@@ -768,29 +722,21 @@ async function loadAgenda() {
     });
 
     clearInterval(dotTimer);
-
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const m = clean.match(/\[[\s\S]*\]/);
-    if (!m) throw new Error('No se recibieron eventos.');
-
+    const m = raw.replace(/```json|```/g,'').match(/\[[\s\S]*\]/);
+    if (!m) throw new Error('Sin respuesta válida del servidor.');
     allEvents = JSON.parse(m[0]);
-    if (!Array.isArray(allEvents) || !allEvents.length)
-      throw new Error('No hay eventos para hoy ' + date + '.');
-
+    if (!Array.isArray(allEvents) || !allEvents.length) throw new Error('No hay eventos para hoy ' + iso);
     document.getElementById('updTime').textContent = nowArg;
     document.getElementById('updRow').style.display = 'flex';
     updateStats();
     setFilter(currentFilter);
-
   } catch(err) {
     clearInterval(dotTimer);
     document.getElementById('content').innerHTML =
-      '<div class="error-screen">' +
-        '<div class="err-icon">⚡</div>' +
-        '<div class="err-title">Error al cargar</div>' +
-        '<div class="err-msg">' + err.message + '</div>' +
-        '<button class="btn-retry" onclick="loadAgenda()">REINTENTAR</button>' +
-      '</div>';
+      '<div class="error-screen"><div class="err-icon">⚡</div>' +
+      '<div class="err-title">Error al cargar</div>' +
+      '<div class="err-msg">' + err.message + '</div>' +
+      '<button class="btn-retry" onclick="loadAgenda()">REINTENTAR</button></div>';
   } finally {
     btn.style.animation = '';
     btn.textContent = '↻';
@@ -799,24 +745,17 @@ async function loadAgenda() {
 }
 
 function updateStats() {
-  const live = allEvents.filter(e => e.isLive).length;
-  const fut = allEvents.filter(e => e.sport === 'futbol').length;
-  const other = allEvents.filter(e => e.sport !== 'futbol').length;
   document.getElementById('statTotal').textContent = allEvents.length;
-  document.getElementById('statLive').textContent = live;
-  document.getElementById('statFut').textContent = fut;
-  document.getElementById('statOther').textContent = other;
+  document.getElementById('statLive').textContent = allEvents.filter(e=>e.isLive).length;
+  document.getElementById('statFut').textContent = allEvents.filter(e=>e.sport==='futbol').length;
+  document.getElementById('statOther').textContent = allEvents.filter(e=>e.sport!=='futbol').length;
   document.getElementById('statsBar').style.display = 'grid';
 }
 
 function sortByTime(evs) {
-  return [...evs].sort((a, b) => {
-    const toMin = t => {
-      if (!t || t === '—') return 9999;
-      const [h, m] = t.split(':').map(Number);
-      return h * 60 + m;
-    };
-    return toMin(a.time) - toMin(b.time);
+  return [...evs].sort((a,b) => {
+    const m = t => { if(!t||t==='—') return 9999; const [h,min]=t.split(':').map(Number); return h*60+min; };
+    return m(a.time)-m(b.time);
   });
 }
 
@@ -824,34 +763,21 @@ function setFilter(sport) {
   currentFilter = sport;
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelector('.tab[data-s="' + sport + '"]').classList.add('active');
-  const list = sport === 'todos' ? allEvents : allEvents.filter(e => e.sport === sport);
-  renderEvents(list);
+  renderEvents(sport === 'todos' ? allEvents : allEvents.filter(e => e.sport === sport));
 }
 
 function renderEvents(evs) {
   const el = document.getElementById('content');
-  if (!evs.length) {
-    el.innerHTML = '<div class="empty-screen">SIN EVENTOS HOY</div>';
-    return;
-  }
-  const liveEvs = evs.filter(e => e.isLive);
-  const upcoming = sortByTime(evs.filter(e => !e.isLive));
+  if (!evs.length) { el.innerHTML = '<div class="empty-screen">SIN EVENTOS HOY</div>'; return; }
+  const live = evs.filter(e=>e.isLive);
+  const upcoming = sortByTime(evs.filter(e=>!e.isLive));
   let html = '';
-  if (liveEvs.length) {
-    html += '<div class="live-section">' +
-      '<div class="live-header">' +
-        '<span class="live-dot-anim"></span>' +
-        '<span class="live-label">EN VIVO AHORA</span>' +
-        '<span class="live-count">' + liveEvs.length + ' EVENTOS</span>' +
-      '</div>' +
-      liveEvs.map(ev => cardHTML(ev)).join('') +
-    '</div>';
+  if (live.length) {
+    html += '<div class="live-section"><div class="live-header"><span class="live-dot-anim"></span><span class="live-label">EN VIVO AHORA</span><span class="live-count">'+live.length+' EVENTOS</span></div>' + live.map(cardHTML).join('') + '</div>';
   }
   if (upcoming.length) {
-    if (liveEvs.length) {
-      html += '<div class="upcoming-header"><span class="upcoming-label">PRÓXIMOS</span><span class="upcoming-line"></span></div>';
-    }
-    html += upcoming.map(ev => cardHTML(ev)).join('');
+    if (live.length) html += '<div class="upcoming-header"><span class="upcoming-label">PRÓXIMOS</span><span class="upcoming-line"></span></div>';
+    html += upcoming.map(cardHTML).join('');
   }
   el.innerHTML = html;
 }
@@ -860,23 +786,13 @@ function cardHTML(ev) {
   const chs = Array.isArray(ev.channels) ? ev.channels : [];
   const meta = SPORT_META[ev.sport] || { icon:'🏅', label: ev.sport };
   return '<div class="event-card" data-s="' + ev.sport + '">' +
-    '<div class="card-top">' +
-      '<span class="sport-badge">' + meta.icon + ' ' + meta.label.toUpperCase() + '</span>' +
-      (ev.isLive
-        ? '<span class="live-badge"><span class="live-badge-dot"></span>LIVE</span>'
-        : '<span class="time-tag">' + ev.time + ' HS</span>') +
-    '</div>' +
+    '<div class="card-top"><span class="sport-badge">' + meta.icon + ' ' + meta.label.toUpperCase() + '</span>' +
+    (ev.isLive ? '<span class="live-badge"><span class="live-badge-dot"></span>LIVE</span>' : '<span class="time-tag">' + (ev.time||'') + ' HS</span>') + '</div>' +
     '<div class="ev-title">' + ev.title + '</div>' +
-    '<div class="ev-sub">' + (ev.subtitle || '') + '</div>' +
-    '<div class="card-footer">' +
-      '<div class="channels">' +
-        (chs.length
-          ? chs.map(c => '<span class="ch">' + c + '</span>').join('')
-          : '<span class="ch" style="color:var(--muted2)">SIN TV CONFIRMADA</span>') +
-      '</div>' +
-      (ev.venue ? '<span class="venue">' + ev.venue + '</span>' : '') +
-    '</div>' +
-  '</div>';
+    '<div class="ev-sub">' + (ev.subtitle||'') + '</div>' +
+    '<div class="card-footer"><div class="channels">' +
+    (chs.length ? chs.map(c=>'<span class="ch">'+c+'</span>').join('') : '<span class="ch" style="color:var(--muted2)">SIN TV CONFIRMADA</span>') +
+    '</div>' + (ev.venue ? '<span class="venue">'+ev.venue+'</span>' : '') + '</div></div>';
 }
 </script>
 </body>
