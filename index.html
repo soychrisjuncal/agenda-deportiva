@@ -683,9 +683,23 @@ async function loadAgenda() {
   try {
     const raw = await callAI(prompt);
     clearInterval(dotTimer);
-    const m = raw.replace(/```json|```/g,'').match(/\[\s\S*\]/);
-    if (!m) throw new Error('Sin respuesta válida.');
-    allEvents = JSON.parse(m[0]);
+    console.log('RAW RESPONSE:', raw);
+
+    // Extract array robustly
+    let jsonStr = raw.replace(/```json|```/g, '').trim();
+    const start = jsonStr.indexOf('[');
+    const end = jsonStr.lastIndexOf(']');
+    if (start === -1 || end === -1) throw new Error('La IA no devolvió JSON válido.');
+    jsonStr = jsonStr.slice(start, end + 1);
+
+    // Fix common AI JSON mistakes
+    jsonStr = jsonStr
+      .replace(/,\s*}/g, '}')      // trailing commas in objects
+      .replace(/,\s*]/g, ']')      // trailing commas in arrays
+      .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":')  // unquoted keys
+      .replace(/:\s*'([^']*)'/g, ': "$1"');          // single quotes -> double
+
+    allEvents = JSON.parse(jsonStr);
     if (!Array.isArray(allEvents) || !allEvents.length) throw new Error('No hay eventos para hoy ' + iso);
     document.getElementById('updTime').textContent = nowArg;
     document.getElementById('updRow').style.display = 'flex';
