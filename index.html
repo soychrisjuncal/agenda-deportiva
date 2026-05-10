@@ -626,43 +626,28 @@ function updateDate() {
 function getArgNow() {
   const now = new Date();
   const TZ = 'America/Argentina/Buenos_Aires';
-  const fmt = (opts) => new Intl.DateTimeFormat('es-AR', { timeZone: TZ, ...opts }).format(now);
   const p = {};
   new Intl.DateTimeFormat('es-AR', { timeZone:TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false }).formatToParts(now).forEach(x => p[x.type] = x.value);
   return {
     iso:     p.year + '-' + p.month + '-' + p.day,
-    dayName: fmt({ weekday:'long' }),
+    dayName: new Intl.DateTimeFormat('es-AR', { timeZone:TZ, weekday:'long' }).format(now),
     day:     p.day,
-    month:   fmt({ month:'long' }),
+    month:   new Intl.DateTimeFormat('es-AR', { timeZone:TZ, month:'long' }).format(now),
     year:    p.year,
     time:    p.hour + ':' + p.minute
   };
 }
 
-async function callAI(prompt, onChunk) {
+async function callAI(prompt) {
   const r = await fetch(WORKER_URL, {
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ prompt, stream: true })
+    body: JSON.stringify({ prompt })
   });
   if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error || 'Error ' + r.status); }
-  const reader = r.body.getReader();
-  const dec = new TextDecoder();
-  let full = '';
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    for (const line of dec.decode(value, { stream:true }).split('\n')) {
-      if (!line.startsWith('data: ')) continue;
-      const d = line.slice(6).trim();
-      if (d === '[DONE]') continue;
-      try {
-        const tok = JSON.parse(d).choices?.[0]?.delta?.content || '';
-        if (tok) { full += tok; if (onChunk) onChunk(full); }
-      } catch {}
-    }
-  }
-  return full;
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message || JSON.stringify(d.error));
+  return d.choices?.[0]?.message?.content || '';
 }
 
 async function loadAgenda() {
@@ -677,9 +662,8 @@ async function loadAgenda() {
   document.getElementById('content').innerHTML =
     '<div class="loading-screen">' +
       '<div class="load-bar-wrap"><div class="load-bar"></div></div>' +
-      '<div class="load-txt">CARGANDO <span id="streamDots">.</span></div>' +
-    '</div>' +
-    '<div id="streamCards"></div>';
+      '<div class="load-txt">CARGANDO AGENDA <span id="streamDots">.</span></div>' +
+    '</div>';
 
   let dots = 1;
   const dotTimer = setInterval(() => {
@@ -689,41 +673,18 @@ async function loadAgenda() {
 
   const prompt = 'HOY ES: ' + dayName + ' ' + day + ' de ' + month + ' de ' + year + '. FECHA ISO: ' + iso + '. HORA ARGENTINA: ' + nowArg + ' (GMT-3).\n\n' +
     'Generá la agenda deportiva SOLO de hoy ' + iso + ' para Argentina.\n' +
-    'DEPORTES: futbol (Liga Profesional, Libertadores, Champions, Premier, LaLiga, etc), basket (NBA, Liga Nacional), f1 (solo si hay evento hoy ' + iso + '), tennis (ATP/WTA).\n' +
+    'DEPORTES: futbol (Liga Profesional, Libertadores, Champions, Premier, LaLiga, etc), basket (NBA, Liga Nacional), f1 (solo si hay evento hoy), tennis (ATP/WTA).\n' +
     'TV ARGENTINA: ESPN, ESPN Premium, Star+, DSports, TyC Sports, DIRECTV Sports, Canal 7, TNT Sports.\n\n' +
     'RESPONDE SOLO con array JSON puro, sin texto, sin backticks:\n' +
     '[{"sport":"futbol","title":"River vs Boca","subtitle":"Liga Profesional","time":"21:00","isLive":false,"channels":["ESPN Premium"],"venue":"Monumental"}]\n\n' +
     'sport=futbol|basket|f1|tennis, time=HH:MM hora argentina, isLive=true si juega AHORA a las ' + nowArg + ', channels=array, venue=string.\n' +
     'Solo eventos de HOY ' + iso + '. Entre 8 y 16 eventos.';
 
-  let streamed = 0;
   try {
-    const raw = await callAI(prompt, (partial) => {
-      try {
-        const re = /\{"sport":"[^"]+","title":"[^"]*"[^}]*\}/g;
-        const hits = [...partial.matchAll(re)];
-        if (hits.length > streamed) {
-          const box = document.getElementById('streamCards');
-          if (!box) return;
-          hits.slice(streamed).forEach(h => {
-            try {
-              const ev = JSON.parse(h[0]);
-              if (ev.sport && ev.title) {
-                const w = document.createElement('div');
-                w.style.cssText = 'padding:0 16px 10px';
-                w.innerHTML = cardHTML(ev);
-                box.appendChild(w);
-                streamed++;
-              }
-            } catch {}
-          });
-        }
-      } catch {}
-    });
-
+    const raw = await callAI(prompt);
     clearInterval(dotTimer);
-    const m = raw.replace(/```json|```/g,'').match(/\[[\s\S]*\]/);
-    if (!m) throw new Error('Sin respuesta válida del servidor.');
+    const m = raw.replace(/```json|```/g,'').match(/\[\s\S*\]/);
+    if (!m) throw new Error('Sin respuesta válida.');
     allEvents = JSON.parse(m[0]);
     if (!Array.isArray(allEvents) || !allEvents.length) throw new Error('No hay eventos para hoy ' + iso);
     document.getElementById('updTime').textContent = nowArg;
@@ -739,7 +700,7 @@ async function loadAgenda() {
       '<button class="btn-retry" onclick="loadAgenda()">REINTENTAR</button></div>';
   } finally {
     btn.style.animation = '';
-    btn.textContent = '↻';
+    btn.textContent = '\u21bb';
     btn.disabled = false;
   }
 }
